@@ -555,7 +555,7 @@
 
     loadScript(function () {
       var client = getClient();
-      client.product.fetch('15863583179038').then(function (product) {
+      client.product.fetch('gid://shopify/Product/15863583179038').then(function (product) {
         var targetTitle = AUDIT_LABEL[lastSubmission.audit_type];
         var variant = null;
         for (var i = 0; i < product.variants.length; i++) {
@@ -564,17 +564,14 @@
         if (!variant) { variant = product.variants[0]; }
 
         return client.checkout.create({
-          lineItems: [{
-            variantId: variant.id,
-            quantity: 1,
-            customAttributes: [
-              { key: 'Submission ID', value: lastSubmission.id },
-              { key: 'ASIN', value: lastSubmission.asin },
-              { key: 'Audit Type', value: targetTitle },
-              { key: 'Pre-scan Email', value: lastSubmission.email },
-            ],
-          }],
+          lineItems: [{ variantId: variant.id, quantity: 1 }],
           note: 'Pre-scan submission ' + lastSubmission.id + ' — edit link: ' + window.location.origin + '/edit.html?id=' + lastSubmission.id + '&token=' + lastSubmission.edit_token,
+          customAttributes: [
+            { key: 'Submission ID', value: lastSubmission.id },
+            { key: 'ASIN', value: lastSubmission.asin },
+            { key: 'Audit Type', value: targetTitle },
+            { key: 'Pre-scan Email', value: lastSubmission.email },
+          ],
         });
       }).then(function (checkout) {
         window.location.href = checkout.webUrl;
