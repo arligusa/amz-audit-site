@@ -350,11 +350,76 @@
     <div class="final-cta">
       <h2>Ready to get started?</h2>
       <p>Founding-client presale — 50% off. $48.50 for one audit, $73.50 for both — first 10 spots only.</p>
-      <a class="btn-primary" href="https://buyarlig.com/products/arli-audits-founding-client-presale" target="_blank" rel="noopener">Claim your presale spot</a>
+      <div id="buy-box" style="background:#fff;border-radius:12px;padding:20px 20px 8px;max-width:340px;margin:0 auto;text-align:left;">
+        <div id='product-component-arli-presale'></div>
+        <noscript><a class="btn-primary" href="https://buyarlig.com/products/arli-audits-founding-client-presale" style="display:block;text-align:center;">Claim your presale spot</a></noscript>
+      </div>
       <p style="margin: 16px 0 0; font-size: 13.5px;"><a href="mailto:contact@amzaudits.arligusa.com?subject=Amazon%20Audit%20-%20Question&body=" style="color: #c7ccd6;">Questions first? Email us</a></p>
     </div>
   </div>
 </section>
+
+<script type="text/javascript">
+/*<![CDATA[*/
+(function () {
+  var scriptURL = 'https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js';
+  function loadScript() {
+    var script = document.createElement('script');
+    script.async = true;
+    script.src = scriptURL;
+    (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(script);
+    script.onload = ShopifyBuyInit;
+  }
+  function ShopifyBuyInit() {
+    var client = ShopifyBuy.buildClient({
+      domain: 'arlig.myshopify.com',
+      storefrontAccessToken: 'a6836f04aad6ac9499f609bc9df6110d',
+    });
+    ShopifyBuy.UI.onReady(client).then(function (ui) {
+      ui.createComponent('product', {
+        id: '15863583179038',
+        node: document.getElementById('product-component-arli-presale'),
+        moneyFormat: '%24%7B%7Bamount%7D%7D',
+        options: {
+          "product": {
+            "styles": {
+              "product": { "text-align": "left" },
+              "title": { "font-family": "Georgia, 'Times New Roman', serif", "font-weight": "600", "font-size": "19px", "color": "#16181d" },
+              "button": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "font-weight": "700", "font-size": "15px", "padding-top": "13px", "padding-bottom": "13px", "color": "#ffffff", "background-color": "#0f6b5c", ":hover": { "background-color": "#0c5548" }, ":focus": { "background-color": "#0c5548" }, "border-radius": "8px", "width": "100%" },
+              "price": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "font-weight": "600", "font-size": "19px", "color": "#16181d" }
+            },
+            "contents": { "img": false },
+            "text": { "button": "Add to cart" },
+            "googleFonts": []
+          },
+          "option": {},
+          "cart": {
+            "styles": {
+              "button": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "font-weight": "700", "font-size": "15px", "padding-top": "14px", "padding-bottom": "14px", "color": "#ffffff", "background-color": "#0f6b5c", ":hover": { "background-color": "#0c5548" }, ":focus": { "background-color": "#0c5548" }, "border-radius": "8px" }
+            },
+            "text": { "total": "Subtotal", "button": "Checkout", "notice": "Shipping and discount codes are added at checkout." }
+          },
+          "toggle": {
+            "styles": {
+              "toggle": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "background-color": "#0f6b5c", ":hover": { "background-color": "#0c5548" }, ":focus": { "background-color": "#0c5548" } }
+            }
+          }
+        },
+      });
+    });
+  }
+  if (window.ShopifyBuy) {
+    if (window.ShopifyBuy.UI) {
+      ShopifyBuyInit();
+    } else {
+      loadScript();
+    }
+  } else {
+    loadScript();
+  }
+})();
+/*]]>*/
+</script>
 
 <footer>
   <div class="wrap">
