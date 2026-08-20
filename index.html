@@ -187,6 +187,32 @@
   }
   .final-cta h2 { color: #fff; }
   .final-cta p { color: #c7ccd6; margin: 0 0 24px; }
+  .intake-form label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; color: #1c2027; }
+  .intake-form label:first-child { margin-top: 0; }
+  .intake-form input[type="text"], .intake-form input[type="email"], .intake-form select, .intake-form textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px;
+    font-size: 14.5px; font-family: inherit; color: var(--ink); background: #fff;
+  }
+  .intake-form textarea { resize: vertical; min-height: 60px; }
+  .audit-type-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .audit-type-opt { display: flex; align-items: flex-start; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; }
+  .audit-type-opt input { margin-top: 3px; width: auto; }
+  .audit-type-opt .at-price { color: var(--accent); font-weight: 700; margin-left: auto; padding-left: 8px; white-space: nowrap; }
+  .str-note { display: none; margin-top: 8px; }
+  .str-note.show { display: block; }
+  .str-note label { display: block; }
+  .str-note label input { width: auto; display: inline-block; margin-right: 6px; }
+  .form-err { color: #b42318; font-size: 13px; margin-top: 10px; display: none; text-align: left; }
+  .form-err.show { display: block; }
+  .btn-block { width: 100%; text-align: center; display: block; border: none; cursor: pointer; }
+  .prescan-loading { text-align: center; padding: 20px 0; color: var(--ink-soft); font-size: 14px; }
+  .prescan-score { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+  .prescan-findings { list-style: none; padding: 0; margin: 0 0 10px; }
+  .prescan-findings li { font-size: 13.5px; color: var(--ink-soft); padding: 7px 0; border-bottom: 1px solid var(--line); }
+  .prescan-findings li:last-child { border-bottom: none; }
+  .prescan-fallback { font-size: 13.5px; color: var(--ink-soft); background: var(--paper-soft); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
+  .edit-link-box { font-size: 12px; color: #8a91a3; margin-top: 14px; word-break: break-all; }
+  .edit-link-box a { color: #8a91a3; }
   @media (max-width: 600px) {
     .hero h1 { font-size: 30px; }
     header.top a.cta-mini { display: none; }
@@ -260,12 +286,12 @@
     <p class="sub">Two quick report downloads replace vague back-and-forth — exact steps provided once you start.</p>
     <ol class="steps">
       <li>
-        <strong>Fill out a short intake form</strong>
-        <span class="detail">Your ASIN/listing URL, which audit you want, and (for PPC) your Search Term Report — exact click-by-click steps included, about 5 minutes total.</span>
+        <strong>Get a free instant pre-scan</strong>
+        <span class="detail">Answer a few quick questions about your listing and we'll run an automated pre-scan on the spot — so you know we can actually help before you pay anything.</span>
       </li>
       <li>
         <strong>Pay to lock in your spot</strong>
-        <span class="detail">Founding-client pricing, first 10 clients only. No subscription, no upsell call.</span>
+        <span class="detail">Founding-client pricing, first 10 clients only. No subscription, no upsell call. Your details carry straight over — nothing to re-enter.</span>
       </li>
       <li>
         <strong>Get your report — usually same-day</strong>
@@ -349,11 +375,52 @@
   <div class="wrap">
     <div class="final-cta">
       <h2>Ready to get started?</h2>
-      <p>Founding-client presale — 50% off. $48.50 for one audit, $73.50 for both — first 10 spots only.</p>
-      <div id="buy-box" style="background:#fff;border-radius:12px;padding:20px 20px 8px;max-width:340px;margin:0 auto;text-align:left;">
-        <div id='product-component-arli-presale'></div>
-        <noscript><a class="btn-primary" href="https://buyarlig.com/products/arli-audits-founding-client-presale" style="display:block;text-align:center;">Claim your presale spot</a></noscript>
+      <p>Answer a few quick questions and we'll run a free instant pre-scan of your listing — no payment required — so you know we can help before you pay anything. Founding-client presale after that: 50% off, first 10 spots only.</p>
+
+      <div id="buy-box" style="background:#fff;border-radius:12px;padding:24px;max-width:420px;margin:0 auto;text-align:left;">
+
+        <form id="intake-form" class="intake-form">
+          <label for="in-email">Email</label>
+          <input type="email" id="in-email" required placeholder="you@yourbrand.com">
+
+          <label for="in-asin">Amazon ASIN or listing URL</label>
+          <input type="text" id="in-asin" required placeholder="B0XXXXXXXX or https://www.amazon.com/dp/...">
+
+          <label>Which audit?</label>
+          <div class="audit-type-group">
+            <label class="audit-type-opt"><input type="radio" name="audit_type" value="listing" checked> Listing Audit <span class="at-price">$48.50</span></label>
+            <label class="audit-type-opt"><input type="radio" name="audit_type" value="ppc"> PPC Audit <span class="at-price">$48.50</span></label>
+            <label class="audit-type-opt"><input type="radio" name="audit_type" value="both"> Both <span class="at-price">$73.50</span></label>
+          </div>
+
+          <div id="str-note-wrap" class="str-note">
+            <label><input type="checkbox" id="in-str-check">I have my Search Term Report ready to send after purchase</label>
+            <textarea id="in-str-note" placeholder="Optional — anything about your PPC setup worth knowing now (monthly ad spend, campaign count, etc.)"></textarea>
+          </div>
+
+          <label for="in-marketplace">Marketplace</label>
+          <select id="in-marketplace">
+            <option value="amazon.com" selected>amazon.com (US)</option>
+            <option value="amazon.co.uk">amazon.co.uk (UK)</option>
+            <option value="amazon.ca">amazon.ca (Canada)</option>
+            <option value="amazon.de">amazon.de (Germany)</option>
+            <option value="amazon.com.au">amazon.com.au (Australia)</option>
+          </select>
+
+          <label for="in-notes">Anything else we should know? (optional)</label>
+          <textarea id="in-notes"></textarea>
+
+          <div id="intake-err" class="form-err"></div>
+
+          <button type="submit" class="btn-primary btn-block" style="margin-top:16px;">Run my free pre-scan</button>
+        </form>
+
+        <div id="prescan-loading" class="prescan-loading" style="display:none;">Scanning your listing — usually under 15 seconds…</div>
+
+        <div id="prescan-result" style="display:none;"></div>
+
       </div>
+
       <p style="margin: 16px 0 0; font-size: 13.5px;"><a href="mailto:contact@amzaudits.arligusa.com?subject=Amazon%20Audit%20-%20Question&body=" style="color: #c7ccd6;">Questions first? Email us</a></p>
     </div>
   </div>
@@ -363,59 +430,161 @@
 /*<![CDATA[*/
 (function () {
   var scriptURL = 'https://sdks.shopifycdn.com/buy-button/latest/buy-button-storefront.min.js';
-  function loadScript() {
+  var shopifyClient = null;
+
+  function loadScript(cb) {
+    if (window.ShopifyBuy && window.ShopifyBuy.UI) { cb(); return; }
     var script = document.createElement('script');
     script.async = true;
     script.src = scriptURL;
+    script.onload = cb;
     (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(script);
-    script.onload = ShopifyBuyInit;
   }
-  function ShopifyBuyInit() {
-    var client = ShopifyBuy.buildClient({
-      domain: 'arlig.myshopify.com',
-      storefrontAccessToken: 'a6836f04aad6ac9499f609bc9df6110d',
+  function getClient() {
+    if (!shopifyClient) {
+      shopifyClient = ShopifyBuy.buildClient({
+        domain: 'arlig.myshopify.com',
+        storefrontAccessToken: 'a6836f04aad6ac9499f609bc9df6110d',
+      });
+    }
+    return shopifyClient;
+  }
+  loadScript(function () { getClient(); });
+
+  var AUDIT_LABEL = { listing: 'Listing Audit', ppc: 'PPC Audit', both: 'Both (Listing + PPC)' };
+  var AUDIT_PRICE = { listing: '$48.50', ppc: '$48.50', both: '$73.50' };
+
+  var form = document.getElementById('intake-form');
+  var strWrap = document.getElementById('str-note-wrap');
+  var loadingEl = document.getElementById('prescan-loading');
+  var resultEl = document.getElementById('prescan-result');
+  var errEl = document.getElementById('intake-err');
+  var lastSubmission = null;
+
+  function updateStrVisibility() {
+    var checked = form.querySelector('input[name=audit_type]:checked');
+    var val = checked ? checked.value : 'listing';
+    strWrap.classList.toggle('show', val === 'ppc' || val === 'both');
+  }
+  Array.prototype.forEach.call(form.querySelectorAll('input[name=audit_type]'), function (r) {
+    r.addEventListener('change', updateStrVisibility);
+  });
+  updateStrVisibility();
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
-    ShopifyBuy.UI.onReady(client).then(function (ui) {
-      ui.createComponent('product', {
-        id: '15863583179038',
-        node: document.getElementById('product-component-arli-presale'),
-        moneyFormat: '%24%7B%7Bamount%7D%7D',
-        options: {
-          "product": {
-            "styles": {
-              "product": { "text-align": "left" },
-              "title": { "font-family": "Georgia, 'Times New Roman', serif", "font-weight": "600", "font-size": "19px", "color": "#16181d" },
-              "button": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "font-weight": "700", "font-size": "15px", "padding-top": "13px", "padding-bottom": "13px", "color": "#ffffff", "background-color": "#0f6b5c", ":hover": { "background-color": "#0c5548" }, ":focus": { "background-color": "#0c5548" }, "border-radius": "8px", "width": "100%" },
-              "price": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "font-weight": "600", "font-size": "19px", "color": "#16181d" }
-            },
-            "contents": { "img": false },
-            "text": { "button": "Add to cart" },
-            "googleFonts": []
-          },
-          "option": {},
-          "cart": {
-            "styles": {
-              "button": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "font-weight": "700", "font-size": "15px", "padding-top": "14px", "padding-bottom": "14px", "color": "#ffffff", "background-color": "#0f6b5c", ":hover": { "background-color": "#0c5548" }, ":focus": { "background-color": "#0c5548" }, "border-radius": "8px" }
-            },
-            "text": { "total": "Subtotal", "button": "Checkout", "notice": "Shipping and discount codes are added at checkout." }
-          },
-          "toggle": {
-            "styles": {
-              "toggle": { "font-family": "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif", "background-color": "#0f6b5c", ":hover": { "background-color": "#0c5548" }, ":focus": { "background-color": "#0c5548" } }
-            }
-          }
-        },
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errEl.classList.remove('show');
+    errEl.textContent = '';
+
+    var payload = {
+      email: document.getElementById('in-email').value.trim(),
+      asin_or_url: document.getElementById('in-asin').value.trim(),
+      audit_type: form.querySelector('input[name=audit_type]:checked').value,
+      marketplace: document.getElementById('in-marketplace').value,
+      str_provided: document.getElementById('in-str-check').checked,
+      str_note: document.getElementById('in-str-note').value.trim(),
+      notes: document.getElementById('in-notes').value.trim(),
+    };
+
+    form.style.display = 'none';
+    loadingEl.style.display = 'block';
+
+    fetch('/api/prescan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        loadingEl.style.display = 'none';
+        if (!res.ok) {
+          form.style.display = 'block';
+          errEl.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
+          errEl.classList.add('show');
+          return;
+        }
+        lastSubmission = { id: res.data.id, edit_token: res.data.edit_token, asin: res.data.asin, audit_type: payload.audit_type, email: payload.email };
+        renderResult(res.data.prescan, payload.audit_type, res.data.asin, res.data.id, res.data.edit_token);
+      })
+      .catch(function () {
+        loadingEl.style.display = 'none';
+        form.style.display = 'block';
+        errEl.textContent = 'Network error — please try again.';
+        errEl.classList.add('show');
+      });
+  });
+
+  function renderResult(prescan, auditType, asin, id, token) {
+    var editUrl = window.location.origin + '/edit.html?id=' + encodeURIComponent(id) + '&token=' + encodeURIComponent(token);
+    var html = '';
+
+    if (prescan.status === 'ok') {
+      html += '<div class="prescan-score">Quick pre-scan of ' + escapeHtml(asin) + ': ' + prescan.score + '/100</div>';
+      html += '<ul class="prescan-findings">';
+      prescan.findings.forEach(function (f) { html += '<li>' + escapeHtml(f) + '</li>'; });
+      html += '</ul>';
+      html += '<p style="font-size:12.5px;color:var(--ink-soft);margin:-2px 0 16px;">This is an automated structural check — the paid audit goes far deeper (backend search terms, competitor comparison, and for PPC, your actual Search Term Report).</p>';
+    } else {
+      html += '<div class="prescan-fallback">We couldn’t run an automated pre-scan on this listing right now (Amazon limits automated checks sometimes) — no problem, this doesn’t affect your audit. We’ll do the full manual review either way, within 48 hours of purchase.</div>';
+    }
+
+    html += '<button id="proceed-btn" class="btn-primary btn-block" type="button">Proceed to purchase — ' + AUDIT_PRICE[auditType] + '</button>';
+    html += '<button id="edit-again-btn" class="btn-secondary btn-block" type="button" style="margin-top:8px;">Change my details</button>';
+    html += '<div class="edit-link-box">Want to come back later? Save this link to change your details anytime before we start: <a href="' + editUrl + '">' + editUrl + '</a></div>';
+
+    resultEl.innerHTML = html;
+    resultEl.style.display = 'block';
+
+    document.getElementById('edit-again-btn').addEventListener('click', function () {
+      resultEl.style.display = 'none';
+      form.style.display = 'block';
+    });
+    document.getElementById('proceed-btn').addEventListener('click', proceedToPurchase);
+  }
+
+  function proceedToPurchase() {
+    var btn = document.getElementById('proceed-btn');
+    btn.disabled = true;
+    btn.textContent = 'Redirecting to checkout…';
+
+    loadScript(function () {
+      var client = getClient();
+      client.product.fetch('15863583179038').then(function (product) {
+        var targetTitle = AUDIT_LABEL[lastSubmission.audit_type];
+        var variant = null;
+        for (var i = 0; i < product.variants.length; i++) {
+          if (product.variants[i].title === targetTitle) { variant = product.variants[i]; break; }
+        }
+        if (!variant) { variant = product.variants[0]; }
+
+        return client.checkout.create({
+          lineItems: [{
+            variantId: variant.id,
+            quantity: 1,
+            customAttributes: [
+              { key: 'Submission ID', value: lastSubmission.id },
+              { key: 'ASIN', value: lastSubmission.asin },
+              { key: 'Audit Type', value: targetTitle },
+              { key: 'Pre-scan Email', value: lastSubmission.email },
+            ],
+          }],
+          note: 'Pre-scan submission ' + lastSubmission.id + ' — edit link: ' + window.location.origin + '/edit.html?id=' + lastSubmission.id + '&token=' + lastSubmission.edit_token,
+        });
+      }).then(function (checkout) {
+        window.location.href = checkout.webUrl;
+      }).catch(function () {
+        btn.disabled = false;
+        btn.textContent = 'Proceed to purchase — ' + AUDIT_PRICE[lastSubmission.audit_type];
+        errEl.textContent = 'Could not start checkout — please try again, or email contact@amzaudits.arligusa.com.';
+        errEl.classList.add('show');
       });
     });
-  }
-  if (window.ShopifyBuy) {
-    if (window.ShopifyBuy.UI) {
-      ShopifyBuyInit();
-    } else {
-      loadScript();
-    }
-  } else {
-    loadScript();
   }
 })();
 /*]]>*/

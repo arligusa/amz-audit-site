@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Update your audit details — Arli Audits</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #4b5160;
+    --line: #e6e8ec;
+    --paper: #ffffff;
+    --paper-soft: #f7f8fa;
+    --accent: #0f6b5c;
+    --accent-soft: #e7f4f1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-soft); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 48px 20px; }
+  .brand { font-weight: 700; font-size: 17px; margin-bottom: 24px; }
+  .brand span { color: var(--accent); }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p.sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 20px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; color: #1c2027; }
+  input[type=text], input[type=email], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px;
+    font-size: 14.5px; font-family: inherit; color: var(--ink); background: #fff;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .audit-type-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .audit-type-opt { display: flex; align-items: flex-start; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; }
+  .audit-type-opt input { margin-top: 3px; width: auto; }
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; padding: 13px 20px; border-radius: 8px;
+    font-weight: 600; font-size: 15px; width: 100%; cursor: pointer; margin-top: 18px;
+  }
+  .status-banner { font-size: 13.5px; padding: 12px 14px; border-radius: 8px; margin-bottom: 18px; }
+  .status-purchased { background: var(--accent-soft); color: var(--accent); }
+  .status-pending { background: #fff4e5; color: #b45309; }
+  .err { color: #b42318; font-size: 13.5px; margin-top: 6px; display: none; }
+  .err.show { display: block; }
+  .ok-msg { color: var(--accent); font-size: 13.5px; margin-top: 12px; display: none; }
+  .ok-msg.show { display: block; }
+  .loading, .notfound { text-align: center; color: var(--ink-soft); font-size: 14.5px; padding: 20px 0; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Arli <span>Audits</span></div>
+  <div class="card">
+    <div id="loading" class="loading">Loading your details…</div>
+    <div id="notfound" class="notfound" style="display:none;">
+      We couldn't find that submission. Double-check the link, or email
+      <a href="mailto:contact@amzaudits.arligusa.com">contact@amzaudits.arligusa.com</a>.
+    </div>
+    <div id="content" style="display:none;">
+      <h1>Update your audit details</h1>
+      <p class="sub">Change anything below — we'll use the latest version when your audit is scheduled.</p>
+      <div id="status-banner" class="status-banner"></div>
+
+      <form id="edit-form">
+        <label for="e-email">Email</label>
+        <input type="email" id="e-email" required>
+
+        <label for="e-asin">Amazon ASIN or listing URL</label>
+        <input type="text" id="e-asin" required>
+
+        <label>Which audit?</label>
+        <div class="audit-type-group">
+          <label class="audit-type-opt"><input type="radio" name="e-audit-type" value="listing"> Listing Audit — $48.50</label>
+          <label class="audit-type-opt"><input type="radio" name="e-audit-type" value="ppc"> PPC Audit — $48.50</label>
+          <label class="audit-type-opt"><input type="radio" name="e-audit-type" value="both"> Both — $73.50</label>
+        </div>
+
+        <label><input type="checkbox" id="e-str-check" style="width:auto;display:inline-block;margin-right:6px;">I have my Search Term Report ready to send</label>
+        <textarea id="e-str-note" placeholder="Optional — anything about your PPC setup worth knowing"></textarea>
+
+        <label for="e-marketplace">Marketplace</label>
+        <select id="e-marketplace">
+          <option value="amazon.com">amazon.com (US)</option>
+          <option value="amazon.co.uk">amazon.co.uk (UK)</option>
+          <option value="amazon.ca">amazon.ca (Canada)</option>
+          <option value="amazon.de">amazon.de (Germany)</option>
+          <option value="amazon.com.au">amazon.com.au (Australia)</option>
+        </select>
+
+        <label for="e-notes">Anything else? (optional)</label>
+        <textarea id="e-notes"></textarea>
+
+        <div id="e-err" class="err"></div>
+        <div id="e-ok" class="ok-msg">Saved — thanks. We'll use these updated details.</div>
+
+        <button type="submit" class="btn-primary">Save changes</button>
+      </form>
+
+      <p style="margin-top:18px;font-size:13px;"><a href="/">&larr; Back to amzaudits.arligusa.com</a></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id');
+  var token = params.get('token');
+
+  var loadingEl = document.getElementById('loading');
+  var notfoundEl = document.getElementById('notfound');
+  var contentEl = document.getElementById('content');
+  var statusBanner = document.getElementById('status-banner');
+  var form = document.getElementById('edit-form');
+  var errEl = document.getElementById('e-err');
+  var okEl = document.getElementById('e-ok');
+
+  if (!id || !token) {
+    loadingEl.style.display = 'none';
+    notfoundEl.style.display = 'block';
+    return;
+  }
+
+  fetch('/api/submission?id=' + encodeURIComponent(id) + '&token=' + encodeURIComponent(token))
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      loadingEl.style.display = 'none';
+      if (!res.ok) {
+        notfoundEl.style.display = 'block';
+        return;
+      }
+      var s = res.data.submission;
+      contentEl.style.display = 'block';
+
+      if (s.fulfillment_status && s.fulfillment_status !== 'not_purchased') {
+        statusBanner.className = 'status-banner status-purchased';
+        statusBanner.textContent = 'You\'ve already purchased' + (s.order_name ? ' (' + s.order_name + ')' : '') + ' — these details will be used for your scheduled audit.';
+      } else {
+        statusBanner.className = 'status-banner status-pending';
+        statusBanner.textContent = 'You haven\'t purchased yet. Update your details below, then head back to the site to proceed to purchase.';
+      }
+
+      document.getElementById('e-email').value = s.email;
+      document.getElementById('e-asin').value = s.asin_or_url;
+      document.getElementById('e-marketplace').value = s.marketplace || 'amazon.com';
+      document.getElementById('e-str-check').checked = !!s.str_provided;
+      document.getElementById('e-str-note').value = s.str_note || '';
+      document.getElementById('e-notes').value = s.notes || '';
+      var radios = document.querySelectorAll('input[name=e-audit-type]');
+      for (var i = 0; i < radios.length; i++) {
+        radios[i].checked = radios[i].value === s.audit_type;
+      }
+    })
+    .catch(function () {
+      loadingEl.style.display = 'none';
+      notfoundEl.style.display = 'block';
+    });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errEl.classList.remove('show');
+    okEl.classList.remove('show');
+
+    var auditType = null;
+    var radios = document.querySelectorAll('input[name=e-audit-type]');
+    for (var i = 0; i < radios.length; i++) {
+      if (radios[i].checked) auditType = radios[i].value;
+    }
+
+    var payload = {
+      id: id,
+      token: token,
+      email: document.getElementById('e-email').value.trim(),
+      asin_or_url: document.getElementById('e-asin').value.trim(),
+      audit_type: auditType,
+      marketplace: document.getElementById('e-marketplace').value,
+      str_provided: document.getElementById('e-str-check').checked,
+      str_note: document.getElementById('e-str-note').value.trim(),
+      notes: document.getElementById('e-notes').value.trim(),
+    };
+
+    var btn = form.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    fetch('/api/submission', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        btn.textContent = 'Save changes';
+        if (!res.ok) {
+          errEl.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
+          errEl.classList.add('show');
+          return;
+        }
+        okEl.classList.add('show');
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = 'Save changes';
+        errEl.textContent = 'Network error — please try again.';
+        errEl.classList.add('show');
+      });
+  });
+})();
+</script>
+</body>
+</html>
