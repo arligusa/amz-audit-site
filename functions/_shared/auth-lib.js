@@ -78,7 +78,7 @@ export async function sendMagicLinkEmail(env, email, verifyUrl) {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: 'Arli Audits <login@amzaudits.arligusa.com>',
+      from: 'Arli Audits <login@arli.arligusa.com>',
       to: [email],
       subject: 'Your Arli Audits login link',
       text: `Click below to log in to your Arli Audits account. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can ignore this email.`,

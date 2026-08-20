@@ -68,7 +68,7 @@ export async function onRequestPost(context) {
   const variant = variants.find((e) => e.node.title === targetTitle) || variants[0];
 
   if (!variant) {
-    return json({ error: 'Could not start checkout — please try again, or email contact@amzaudits.arligusa.com.' }, 502);
+    return json({ error: 'Could not start checkout — please try again, or email contact@arli.arligusa.com.' }, 502);
   }
 
   // Shopify deprecated the Checkout API (checkoutCreate) in favor of the Cart API on
@@ -101,7 +101,7 @@ export async function onRequestPost(context) {
   const cart = cartResp?.data?.cartCreate?.cart;
   const errors = cartResp?.data?.cartCreate?.userErrors;
   if (!cart || (errors && errors.length)) {
-    return json({ error: 'Could not start checkout — please try again, or email contact@amzaudits.arligusa.com.' }, 502);
+    return json({ error: 'Could not start checkout — please try again, or email contact@arli.arligusa.com.' }, 502);
   }
 
   return json({ checkoutUrl: cart.checkoutUrl, report_id: reportId });
