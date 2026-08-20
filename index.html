@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMZ Audit Sprint — Amazon Listing &amp; PPC Audits in 48 Hours</title>
+<meta name="description" content="A focused, 48-hour audit that tells you exactly what's costing you sales on Amazon. Listing or PPC audit from $97.">
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #4b5160;
+    --line: #e6e8ec;
+    --paper: #ffffff;
+    --paper-soft: #f7f8fa;
+    --accent: #0f6b5c;
+    --accent-soft: #e7f4f1;
+    --warn: #b45309;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding: 20px 0;
+  }
+  header.top .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+  .brand span { color: var(--accent); }
+  .top a.cta-mini {
+    background: var(--ink);
+    color: #fff;
+    padding: 9px 16px;
+    border-radius: 7px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .hero { padding: 64px 0 40px; }
+  .hero h1 {
+    font-size: 38px;
+    line-height: 1.15;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+  }
+  .hero p.lead {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 560px;
+    margin: 0 0 28px;
+  }
+  .badge {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    padding: 14px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    display: inline-block;
+  }
+  .btn-secondary {
+    background: var(--paper);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    padding: 14px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+    display: inline-block;
+  }
+  section { padding: 44px 0; border-top: 1px solid var(--line); }
+  section h2 { font-size: 24px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  section p.sub { color: var(--ink-soft); margin: 0 0 28px; font-size: 15.5px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 22px;
+    background: var(--paper-soft);
+  }
+  .card.featured { border-color: var(--accent); background: var(--accent-soft); }
+  .card h3 { margin: 0 0 6px; font-size: 16px; }
+  .card .price { font-size: 26px; font-weight: 700; margin: 8px 0 10px; }
+  .card ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--ink-soft); }
+  .card ul li { margin-bottom: 6px; }
+  .save { display: inline-block; background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 5px; margin-left: 8px; vertical-align: middle; }
+  .steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+  .steps li {
+    counter-increment: step;
+    position: relative;
+    padding-left: 46px;
+    margin-bottom: 22px;
+    font-size: 15px;
+  }
+  .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0; top: 0;
+    width: 30px; height: 30px;
+    background: var(--ink);
+    color: #fff;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+  }
+  .steps li strong { display: block; margin-bottom: 2px; }
+  .steps li span.detail { color: var(--ink-soft); font-size: 14px; }
+  .trust-list { list-style: none; padding: 0; margin: 0; }
+  .trust-list li {
+    padding: 16px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px;
+  }
+  .trust-list li:last-child { border-bottom: none; }
+  .trust-list li strong { display: block; margin-bottom: 4px; }
+  .sample-box {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .sample-box .sample-head {
+    background: var(--paper-soft);
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .sample-box .sample-head strong { color: var(--ink); }
+  .sample-body { padding: 20px; }
+  .score-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 18px; }
+  .score-table th, .score-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .score-table th { color: var(--ink-soft); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .finding { margin-bottom: 16px; font-size: 14.5px; }
+  .finding strong { display: block; margin-bottom: 3px; }
+  .finding .fix { color: var(--accent); font-weight: 600; }
+  details summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding: 14px 0;
+    font-size: 15px;
+    list-style: none;
+  }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "+ "; color: var(--accent); }
+  details[open] summary::before { content: "\2212 "; }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 32px 0 48px;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+  }
+  footer a { color: var(--ink-soft); }
+  .final-cta {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 16px;
+    padding: 40px 32px;
+    text-align: center;
+    margin: 0 0 8px;
+  }
+  .final-cta h2 { color: #fff; }
+  .final-cta p { color: #c7ccd6; margin: 0 0 24px; }
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 30px; }
+    header.top a.cta-mini { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">AMZ <span>Audit Sprint</span></div>
+    <a class="cta-mini" href="#get-started">Get Started</a>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap">
+    <span class="badge">Founding client rate — first 10 spots</span>
+    <h1>A focused, 48-hour audit that tells you exactly what's costing you sales.</h1>
+    <p class="lead">Amazon Listing or PPC audit, from $97. Real findings tied to your real data — not a generic checklist. No scheduling calls, no retainer, just a fast, specific report.</p>
+    <div class="cta-row">
+      <a class="btn-primary" href="#get-started">Get your audit</a>
+      <a class="btn-secondary" href="#sample">See a free sample</a>
+    </div>
+  </div>
+</div>
+
+<section id="pricing">
+  <div class="wrap">
+    <h2>What's included</h2>
+    <p class="sub">Pick a Listing audit, a PPC audit, or both — delivered as one clear PDF report, by email, within 48 hours.</p>
+    <div class="cards">
+      <div class="card">
+        <h3>Listing Audit</h3>
+        <div class="price">$97</div>
+        <ul>
+          <li>Title, bullets, images, A+ content, on-page keyword usage</li>
+          <li>Scored across shopper-intent dimensions</li>
+          <li>Grounded in your real traffic/conversion numbers</li>
+          <li>5-10 specific, ranked fixes</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>PPC Audit</h3>
+        <div class="price">$97</div>
+        <ul>
+          <li>Campaign structure, spend efficiency, targeting</li>
+          <li>Based on your actual Search Term Report</li>
+          <li>Flags wasted spend and structural issues</li>
+          <li>5-10 specific, ranked fixes</li>
+        </ul>
+      </div>
+      <div class="card featured">
+        <h3>Both<span class="save">SAVE $47</span></h3>
+        <div class="price">$147</div>
+        <ul>
+          <li>The full picture — listing and ad spend together</li>
+          <li>One combined report, not two separate ones</li>
+          <li>How each side is helping or hurting the other</li>
+          <li>Everything in both audits above</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="wrap">
+    <h2>How it works</h2>
+    <p class="sub">Two quick report downloads replace vague back-and-forth — exact steps provided once you start.</p>
+    <ol class="steps">
+      <li>
+        <strong>Fill out a short intake form</strong>
+        <span class="detail">Your ASIN/listing URL, which audit you want, and (for PPC) your Search Term Report — exact click-by-click steps included, about 5 minutes total.</span>
+      </li>
+      <li>
+        <strong>Pay to lock in your spot</strong>
+        <span class="detail">Founding-client pricing, first 10 clients only. No subscription, no upsell call.</span>
+      </li>
+      <li>
+        <strong>Get your report within 48 hours</strong>
+        <span class="detail">A written PDF with specific findings and a prioritized fix list — delivered straight to your inbox.</span>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<section id="sample">
+  <div class="wrap">
+    <h2>A free sample, before you pay anything</h2>
+    <p class="sub">Illustrative excerpt built from a real, public Amazon listing — not a paid client deliverable, no private data used.</p>
+    <div class="sample-box">
+      <div class="sample-head">
+        <strong>Listing used:</strong> Owala FreeSip Insulated Stainless Steel Water Bottle (24oz) — a well-known, stable listing chosen so you can benchmark against something familiar. Every finding below is an example of the kind of thing a real audit surfaces.
+      </div>
+      <div class="sample-body">
+        <table class="score-table">
+          <tr><th>Dimension</th><th>Score</th></tr>
+          <tr><td>Title clarity &amp; keyword front-loading</td><td>4/5</td></tr>
+          <tr><td>Bullet benefit-clarity</td><td>3/5</td></tr>
+          <tr><td>Image completeness</td><td>4/5</td></tr>
+          <tr><td>Social-proof signal strength</td><td>4/5</td></tr>
+          <tr><td>Mobile readability</td><td>3/5</td></tr>
+          <tr><td>Question-answering coverage</td><td>3/5</td></tr>
+        </table>
+
+        <div class="finding">
+          <strong>Title front-loads brand/style before the search-driving attribute.</strong>
+          Shoppers scanning results on mobile often only see the first 60-80 characters before truncation.
+          <div class="fix">Fix: reorder to brand → capacity → material → category keyword → differentiator.</div>
+        </div>
+        <div class="finding">
+          <strong>A mid-list bullet leads with a feature, not a benefit.</strong>
+          "Push-button locking spout" doesn't tell a shopper why it matters to them.
+          <div class="fix">Fix: lead with the benefit — "Leak-proof for your bag or car" — then the mechanism.</div>
+        </div>
+        <div class="finding">
+          <strong>No dedicated size/scale image in the gallery.</strong>
+          "Is this actually as big as I think" is one of the most common pre-purchase hesitations.
+          <div class="fix">Fix: add one size-comparison image with capacity called out in large text.</div>
+        </div>
+
+        <details>
+          <summary>See 2 more example findings</summary>
+          <div class="finding">
+            <strong>Review volume is strong but not contextualized on-page.</strong>
+            Star ratings are easy to glance past without a specific, quotable reinforcement.
+            <div class="fix">Fix: add a social-proof-forward image or A+ module surfacing a credible pattern from reviews.</div>
+          </div>
+          <div class="finding">
+            <strong>Care/compatibility questions aren't pre-answered.</strong>
+            Predictable questions either slow-burn in public Q&amp;A or become return reasons.
+            <div class="fix">Fix: add a short FAQ-style A+ module for the 3-4 most predictable questions.</div>
+          </div>
+        </details>
+
+        <p style="font-size:13.5px;color:var(--ink-soft);margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
+          A real paid audit goes deeper: backend search terms, actual PPC performance data, a 2-3 competitor comparison, and a fix list ranked by impact vs. effort — all specific to your ASIN and your data.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="trust">
+  <div class="wrap">
+    <h2>Why trust an independent operator with no reviews yet</h2>
+    <p class="sub">Fair question. Instead of asking you to take it on faith:</p>
+    <ul class="trust-list">
+      <li><strong>Look at the work itself.</strong> The free sample above is exactly how the real analysis is structured — judge the thinking before you pay for anything.</li>
+      <li><strong>The scope is narrow on purpose.</strong> Not a vague "we'll optimize your whole account" promise — one clearly defined deliverable, a fixed price, a fixed deadline.</li>
+      <li><strong>48 hours is a real commitment, not a marketing line.</strong> If a report isn't delivered within 48 hours of a completed intake and payment, that's a failure of the stated offer — nothing to just take on trust.</li>
+    </ul>
+    <p style="font-size:14px;color:var(--ink-soft);">No fabricated testimonials, no invented client roster. Just the sample, the scope, and the deadline.</p>
+  </div>
+</section>
+
+<section id="get-started">
+  <div class="wrap">
+    <div class="final-cta">
+      <h2>Ready to get started?</h2>
+      <p>$97 for one audit, $147 for both — first 10 founding clients only.</p>
+      <a class="btn-primary" href="mailto:hello@amzaudits.arligusa.com?subject=Amazon%20Audit%20Sprint%20-%20Get%20Started&body=ASIN%20or%20listing%20URL%3A%0AMarketplace%3A%0AWhich%20audit%20(Listing%20%2F%20PPC%20%2F%20Both)%3A%0ABiggest%20frustration%20with%20this%20listing%2Fads%3A%0A">Email to get started</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    AMZ Audit Sprint — independent Amazon listing &amp; PPC audits. Questions? <a href="mailto:hello@amzaudits.arligusa.com">hello@amzaudits.arligusa.com</a>
+  </div>
+</footer>
+
+</body>
+</html>
