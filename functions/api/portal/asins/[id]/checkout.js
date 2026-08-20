@@ -71,18 +71,22 @@ export async function onRequestPost(context) {
     return json({ error: 'Could not start checkout — please try again, or email contact@amzaudits.arligusa.com.' }, 502);
   }
 
-  const checkoutResp = await shopifyGraphql(
-    `mutation($input: CheckoutCreateInput!) {
-      checkoutCreate(input: $input) {
-        checkout { webUrl }
-        checkoutUserErrors { code field message }
+  // Shopify deprecated the Checkout API (checkoutCreate) in favor of the Cart API on
+  // recent Storefront API versions — cartCreate + cart.checkoutUrl is the replacement.
+  // Cart-level `attributes`/`note` are the equivalent of the old checkout-level
+  // customAttributes/note (still not per-line-item, same reasoning as the homepage flow).
+  const cartResp = await shopifyGraphql(
+    `mutation($input: CartInput!) {
+      cartCreate(input: $input) {
+        cart { checkoutUrl }
+        userErrors { field message }
       }
     }`,
     {
       input: {
-        lineItems: [{ variantId: variant.node.id, quantity: 1 }],
+        lines: [{ merchandiseId: variant.node.id, quantity: 1 }],
         note: `Portal order — report ${reportId}, ASIN ${asinRow.asin}`,
-        customAttributes: [
+        attributes: [
           { key: 'Customer ID', value: auth.customer.id },
           { key: 'ASIN ID', value: asinRow.id },
           { key: 'Report ID', value: reportId },
@@ -94,11 +98,11 @@ export async function onRequestPost(context) {
     }
   );
 
-  const checkout = checkoutResp?.data?.checkoutCreate?.checkout;
-  const errors = checkoutResp?.data?.checkoutCreate?.checkoutUserErrors;
-  if (!checkout || (errors && errors.length)) {
+  const cart = cartResp?.data?.cartCreate?.cart;
+  const errors = cartResp?.data?.cartCreate?.userErrors;
+  if (!cart || (errors && errors.length)) {
     return json({ error: 'Could not start checkout — please try again, or email contact@amzaudits.arligusa.com.' }, 502);
   }
 
-  return json({ checkoutUrl: checkout.webUrl, report_id: reportId });
+  return json({ checkoutUrl: cart.checkoutUrl, report_id: reportId });
 }
