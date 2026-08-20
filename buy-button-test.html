@@ -21,8 +21,9 @@
   function ShopifyBuyInit() {
     var client = ShopifyBuy.buildClient({
       domain: 'arlig.myshopify.com',
-      storefrontAccessToken: 'a6836f04aad6ac9499f609bc9df6f10d',
+      storefrontAccessToken: 'a6836f04aad6ac9499f609bc9df6110d',
     });
+    window.__abClient = client;
     client.product.fetch('15863583179038').then(function(p){
       document.getElementById('test-status').textContent = p ? ('product fetch OK: ' + p.title) : 'product fetch returned null';
     }).catch(function(e){
