@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your portal — Arli Audits</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #4b5160;
+    --line: #e6e8ec;
+    --paper: #ffffff;
+    --paper-soft: #f7f8fa;
+    --accent: #0f6b5c;
+    --accent-soft: #e7f4f1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-soft); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 64px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  .brand { font-weight: 700; font-size: 17px; }
+  .brand span { color: var(--accent); }
+  .account { font-size: 13.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 12px; }
+  .account a { color: var(--accent); text-decoration: none; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 22px; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 14px; }
+  p.sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 24px; }
+  .asin-row { border: 1px solid var(--line); border-radius: 9px; padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .asin-main { font-weight: 600; font-size: 14.5px; }
+  .asin-sub { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+  .status-pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+  .status-delivered { background: var(--accent-soft); color: var(--accent); }
+  .status-in_progress, .status-awaiting_intake { background: #fff4e5; color: #b45309; }
+  .status-none { background: #f0f1f3; color: var(--ink-soft); }
+  .row-actions { display: flex; gap: 8px; align-items: center; }
+  .btn-primary, .btn-secondary {
+    border: none; padding: 9px 14px; border-radius: 7px; font-weight: 600; font-size: 13.5px; cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  .btn-block { width: 100%; margin-top: 14px; padding: 12px 16px; font-size: 14.5px; text-align: center; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; color: #1c2027; }
+  input[type=text], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px;
+    font-size: 14.5px; font-family: inherit; color: var(--ink); background: #fff;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .audit-type-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+  .audit-type-opt { display: flex; align-items: flex-start; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; }
+  .audit-type-opt input { margin-top: 3px; width: auto; }
+  .err { color: #b42318; font-size: 13.5px; margin-top: 10px; display: none; }
+  .err.show { display: block; }
+  .empty { color: var(--ink-soft); font-size: 14px; }
+  .loading, .notfound { text-align: center; color: var(--ink-soft); font-size: 14.5px; padding: 40px 0; }
+  a { color: var(--accent); }
+  dialog { border: none; border-radius: 12px; padding: 0; max-width: 420px; width: calc(100% - 40px); }
+  dialog::backdrop { background: rgba(15, 17, 21, 0.45); }
+  .dialog-inner { padding: 22px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Arli <span>Audits</span></div>
+    <div class="account" id="account-box" style="display:none;">
+      <span id="account-email"></span>
+      <a href="#" id="logout-link">Log out</a>
+    </div>
+  </header>
+
+  <div id="loading" class="loading">Loading your portal…</div>
+  <div id="notfound" class="notfound" style="display:none;">
+    You're not logged in. <a href="/login.html">Log in</a> to view your portal.
+  </div>
+
+  <div id="content" style="display:none;">
+    <h1>Your ASINs</h1>
+    <p class="sub">Track audit status and add new ASINs for review.</p>
+
+    <div id="asin-list"></div>
+    <div id="asin-empty" class="empty" style="display:none;">No ASINs yet — add your first one below.</div>
+
+    <div class="card">
+      <h2>Add an ASIN</h2>
+      <form id="add-asin-form">
+        <label for="a-asin">Amazon ASIN or listing URL</label>
+        <input type="text" id="a-asin" required>
+        <label for="a-label">Nickname (optional)</label>
+        <input type="text" id="a-label" placeholder="e.g. Kitchen Sponge 3-pack">
+        <label for="a-marketplace">Marketplace</label>
+        <select id="a-marketplace">
+          <option value="amazon.com">amazon.com (US)</option>
+          <option value="amazon.co.uk">amazon.co.uk (UK)</option>
+          <option value="amazon.ca">amazon.ca (Canada)</option>
+          <option value="amazon.de">amazon.de (Germany)</option>
+          <option value="amazon.com.au">amazon.com.au (Australia)</option>
+        </select>
+        <div id="a-err" class="err"></div>
+        <button type="submit" class="btn-primary btn-block">Add ASIN</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<dialog id="checkout-dialog">
+  <div class="dialog-inner">
+    <h2 id="checkout-title">Choose an audit</h2>
+    <form id="checkout-form">
+      <div class="audit-type-group">
+        <label class="audit-type-opt"><input type="radio" name="c-audit-type" value="listing" checked> Listing Audit — $48.50</label>
+        <label class="audit-type-opt"><input type="radio" name="c-audit-type" value="ppc"> PPC Audit — $48.50</label>
+        <label class="audit-type-opt"><input type="radio" name="c-audit-type" value="both"> Both — $73.50</label>
+      </div>
+      <div id="c-str-wrap" style="display:none;">
+        <label><input type="checkbox" id="c-str-check" style="width:auto;display:inline-block;margin-right:6px;">I have my Search Term Report ready to send</label>
+        <textarea id="c-str-note" placeholder="Optional — anything about your PPC setup worth knowing"></textarea>
+      </div>
+      <label for="c-notes">Anything else? (optional)</label>
+      <textarea id="c-notes"></textarea>
+      <div id="c-err" class="err"></div>
+      <button type="submit" class="btn-primary btn-block" id="c-submit">Proceed to purchase</button>
+      <button type="button" class="btn-secondary btn-block" id="c-cancel" style="margin-top:8px;">Cancel</button>
+    </form>
+  </div>
+</dialog>
+
+<script type="text/javascript">
+(function () {
+  var loadingEl = document.getElementById('loading');
+  var notfoundEl = document.getElementById('notfound');
+  var contentEl = document.getElementById('content');
+  var accountBox = document.getElementById('account-box');
+  var accountEmail = document.getElementById('account-email');
+  var listEl = document.getElementById('asin-list');
+  var emptyEl = document.getElementById('asin-empty');
+  var addForm = document.getElementById('add-asin-form');
+  var addErr = document.getElementById('a-err');
+  var dialog = document.getElementById('checkout-dialog');
+  var checkoutForm = document.getElementById('checkout-form');
+  var checkoutErr = document.getElementById('c-err');
+  var checkoutSubmit = document.getElementById('c-submit');
+  var checkoutCancel = document.getElementById('c-cancel');
+  var strWrap = document.getElementById('c-str-wrap');
+  var activeAsinId = null;
+
+  var STATUS_LABEL = { awaiting_intake: 'In queue', in_progress: 'In progress', delivered: 'Delivered' };
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  function updateStrVisibility() {
+    var checked = checkoutForm.querySelector('input[name=c-audit-type]:checked');
+    var val = checked ? checked.value : 'listing';
+    strWrap.style.display = (val === 'ppc' || val === 'both') ? 'block' : 'none';
+  }
+  Array.prototype.forEach.call(checkoutForm.querySelectorAll('input[name=c-audit-type]'), function (r) {
+    r.addEventListener('change', updateStrVisibility);
+  });
+
+  function renderAsins(asins) {
+    if (!asins.length) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    listEl.innerHTML = asins.map(function (a) {
+      var report = a.latest_report;
+      var statusClass = report ? 'status-' + report.status : 'status-none';
+      var statusText = report ? (STATUS_LABEL[report.status] || report.status) : 'No audit yet';
+      var actionHtml;
+      if (report && report.status === 'delivered') {
+        actionHtml = '<a class="btn-secondary" href="/api/portal/reports/' + encodeURIComponent(report.id) + '/download">Download report</a>';
+      } else {
+        actionHtml = '<button class="btn-primary buy-btn" data-asin-id="' + a.id + '">' + (report ? 'Order another audit' : 'Order audit') + '</button>';
+      }
+      return '<div class="asin-row">' +
+        '<div><div class="asin-main">' + escapeHtml(a.label || a.asin) + '</div>' +
+        '<div class="asin-sub">' + escapeHtml(a.asin) + ' &middot; ' + escapeHtml(a.marketplace) + '</div></div>' +
+        '<div class="row-actions"><span class="status-pill ' + statusClass + '">' + escapeHtml(statusText) + '</span>' + actionHtml + '</div>' +
+        '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(listEl.querySelectorAll('.buy-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        activeAsinId = btn.getAttribute('data-asin-id');
+        checkoutErr.classList.remove('show');
+        checkoutSubmit.disabled = false;
+        checkoutSubmit.textContent = 'Proceed to purchase';
+        updateStrVisibility();
+        dialog.showModal();
+      });
+    });
+  }
+
+  function loadAsins() {
+    return fetch('/api/portal/asins')
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) throw new Error('failed');
+        renderAsins(res.data.asins || []);
+      });
+  }
+
+  fetch('/api/portal/me')
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok) {
+        loadingEl.style.display = 'none';
+        notfoundEl.style.display = 'block';
+        return;
+      }
+      accountEmail.textContent = res.data.email;
+      accountBox.style.display = 'flex';
+      return loadAsins().then(function () {
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+      });
+    })
+    .catch(function () {
+      loadingEl.style.display = 'none';
+      notfoundEl.style.display = 'block';
+    });
+
+  document.getElementById('logout-link').addEventListener('click', function (e) {
+    e.preventDefault();
+    fetch('/api/auth/logout', { method: 'POST' }).then(function () {
+      window.location.href = '/login.html';
+    });
+  });
+
+  addForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    addErr.classList.remove('show');
+
+    fetch('/api/portal/asins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        asin_or_url: document.getElementById('a-asin').value.trim(),
+        label: document.getElementById('a-label').value.trim(),
+        marketplace: document.getElementById('a-marketplace').value,
+      }),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          addErr.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
+          addErr.classList.add('show');
+          return;
+        }
+        document.getElementById('a-asin').value = '';
+        document.getElementById('a-label').value = '';
+        return loadAsins();
+      })
+      .catch(function () {
+        addErr.textContent = 'Network error — please try again.';
+        addErr.classList.add('show');
+      });
+  });
+
+  checkoutCancel.addEventListener('click', function () { dialog.close(); });
+
+  checkoutForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    checkoutErr.classList.remove('show');
+    checkoutSubmit.disabled = true;
+    checkoutSubmit.textContent = 'Redirecting to checkout…';
+
+    var auditType = checkoutForm.querySelector('input[name=c-audit-type]:checked').value;
+
+    fetch('/api/portal/asins/' + encodeURIComponent(activeAsinId) + '/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        audit_type: auditType,
+        str_provided: document.getElementById('c-str-check').checked,
+        str_note: document.getElementById('c-str-note').value.trim(),
+        notes: document.getElementById('c-notes').value.trim(),
+      }),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          checkoutSubmit.disabled = false;
+          checkoutSubmit.textContent = 'Proceed to purchase';
+          checkoutErr.textContent = res.data && res.data.error ? res.data.error : 'Could not start checkout — please try again.';
+          checkoutErr.classList.add('show');
+          return;
+        }
+        window.location.href = res.data.checkoutUrl;
+      })
+      .catch(function () {
+        checkoutSubmit.disabled = false;
+        checkoutSubmit.textContent = 'Proceed to purchase';
+        checkoutErr.textContent = 'Network error — please try again.';
+        checkoutErr.classList.add('show');
+      });
+  });
+})();
+</script>
+</body>
+</html>

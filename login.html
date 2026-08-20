@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log in — Arli Audits</title>
+<meta name="robots" content="noindex">
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #4b5160;
+    --line: #e6e8ec;
+    --paper: #ffffff;
+    --paper-soft: #f7f8fa;
+    --accent: #0f6b5c;
+    --accent-soft: #e7f4f1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-soft); color: var(--ink); line-height: 1.6; }
+  .wrap { max-width: 420px; margin: 0 auto; padding: 48px 20px; }
+  .brand { font-weight: 700; font-size: 17px; margin-bottom: 24px; }
+  .brand span { color: var(--accent); }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+  p.sub { color: var(--ink-soft); font-size: 14px; margin: 0 0 20px; }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 14px 0 5px; color: #1c2027; }
+  input[type=email] {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px;
+    font-size: 14.5px; font-family: inherit; color: var(--ink); background: #fff;
+  }
+  .btn-primary {
+    background: var(--accent); color: #fff; border: none; padding: 13px 20px; border-radius: 8px;
+    font-weight: 600; font-size: 15px; width: 100%; cursor: pointer; margin-top: 18px;
+  }
+  .btn-primary:disabled { opacity: 0.6; cursor: default; }
+  .err { color: #b42318; font-size: 13.5px; margin-top: 10px; display: none; }
+  .err.show { display: block; }
+  #sent-view { display: none; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">Arli <span>Audits</span></div>
+  <div class="card">
+    <div id="form-view">
+      <h1>Log in</h1>
+      <p class="sub">Enter your email and we'll send you a one-time login link — no password needed.</p>
+      <form id="login-form">
+        <label for="l-email">Email</label>
+        <input type="email" id="l-email" required>
+        <div id="l-err" class="err"></div>
+        <button type="submit" class="btn-primary" id="l-btn">Send me a login link</button>
+      </form>
+    </div>
+    <div id="sent-view">
+      <h1>Check your email</h1>
+      <p class="sub" style="margin-bottom:0;">If that email has an account (or is about to get one), a login link is on its way. It expires in 15 minutes.</p>
+    </div>
+    <p style="margin-top:18px;font-size:13px;"><a href="/">&larr; Back to amzaudits.arligusa.com</a></p>
+  </div>
+</div>
+<script>
+(function () {
+  var params = new URLSearchParams(window.location.search);
+  var form = document.getElementById('login-form');
+  var errEl = document.getElementById('l-err');
+  var btn = document.getElementById('l-btn');
+
+  if (params.get('error') === 'invalid_or_expired') {
+    errEl.textContent = 'That login link is invalid or has expired — request a new one below.';
+    errEl.classList.add('show');
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errEl.classList.remove('show');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+
+    fetch('/api/auth/request-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('l-email').value.trim() }),
+    })
+      .then(function () {
+        document.getElementById('form-view').style.display = 'none';
+        document.getElementById('sent-view').style.display = 'block';
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = 'Send me a login link';
+        errEl.textContent = 'Network error — please try again.';
+        errEl.classList.add('show');
+      });
+  });
+})();
+</script>
+</body>
+</html>

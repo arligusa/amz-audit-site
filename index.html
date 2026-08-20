@@ -40,6 +40,8 @@
   header.top .wrap { display: flex; align-items: center; justify-content: space-between; }
   .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
   .brand span { color: var(--accent); }
+  .nav-actions { display: flex; align-items: center; gap: 16px; }
+  .nav-actions a.nav-login { color: var(--ink-soft); text-decoration: none; font-size: 14px; font-weight: 600; }
   .top a.cta-mini {
     background: var(--ink);
     color: #fff;
@@ -225,7 +227,10 @@
 <header class="top">
   <div class="wrap">
     <div class="brand">Arli <span>Audits</span></div>
-    <a class="cta-mini" href="#get-started">Get Started</a>
+    <div class="nav-actions">
+      <a class="nav-login" href="/login.html">Log in</a>
+      <a class="cta-mini" href="#get-started">Get Started</a>
+    </div>
   </div>
 </header>
 
