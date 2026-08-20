@@ -63,25 +63,72 @@ export function unauthorized() {
   });
 }
 
-// Sends the magic link email via Resend once RESEND_API_KEY is configured; until then
-// logs the link so it can be pulled from Cloudflare logs during development/QA.
+// Client-credentials OAuth2 flow against Entra ID (Azure AD) — gets an app-only
+// access token scoped to Graph's default permissions (Mail.Send, granted via admin
+// consent on the app registration). Fetched fresh per send; volume here is low
+// (magic-link requests are already rate-limited to 5/email/hour), so token caching
+// isn't worth the added complexity yet.
+async function getGraphAccessToken(env) {
+  const resp = await fetch(`https://login.microsoftonline.com/${env.MS_GRAPH_TENANT_ID}/oauth2/v2.0/token`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      client_id: env.MS_GRAPH_CLIENT_ID,
+      client_secret: env.MS_GRAPH_CLIENT_SECRET,
+      scope: 'https://graph.microsoft.com/.default',
+    }),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Graph token request failed: ${resp.status}`);
+  }
+
+  const data = await resp.json();
+  return data.access_token;
+}
+
+async function sendViaGraph(env, email, subject, text) {
+  const accessToken = await getGraphAccessToken(env);
+
+  const resp = await fetch(`https://graph.microsoft.com/v1.0/users/${env.MS_GRAPH_SENDER}/sendMail`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      message: {
+        subject,
+        body: { contentType: 'Text', content: text },
+        toRecipients: [{ emailAddress: { address: email } }],
+      },
+      saveToSentItems: false,
+    }),
+  });
+
+  if (!resp.ok) {
+    throw new Error(`Graph sendMail failed: ${resp.status}`);
+  }
+}
+
+// Sends the magic link email via Microsoft Graph (Exchange Online) once the
+// MS_GRAPH_* vars/secret are configured; until then logs the link so it can be
+// pulled from Cloudflare logs during development/QA. Never throws back to the
+// caller — request-link.js's response is intentionally generic either way, so a
+// delivery failure here shouldn't surface as a different-looking error to the visitor.
 export async function sendMagicLinkEmail(env, email, verifyUrl) {
-  if (!env.RESEND_API_KEY) {
+  const subject = 'Your Arli Audits login link';
+  const text = `Click below to log in to your Arli Audits account. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can ignore this email.`;
+
+  if (!env.MS_GRAPH_TENANT_ID || !env.MS_GRAPH_CLIENT_ID || !env.MS_GRAPH_CLIENT_SECRET || !env.MS_GRAPH_SENDER) {
     console.log(`[stub email] magic link for ${email}: ${verifyUrl}`);
     return;
   }
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({
-      from: 'Arli Audits <login@arli.arligusa.com>',
-      to: [email],
-      subject: 'Your Arli Audits login link',
-      text: `Click below to log in to your Arli Audits account. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can ignore this email.`,
-    }),
-  });
+  try {
+    await sendViaGraph(env, email, subject, text);
+  } catch (e) {
+    console.log(`[email send failed, logging link instead] ${email}: ${verifyUrl} — ${e.message}`);
+  }
 }
