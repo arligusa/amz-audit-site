@@ -63,19 +63,81 @@ export function unauthorized() {
   });
 }
 
-// Client-credentials OAuth2 flow against Entra ID (Azure AD) — gets an app-only
-// access token scoped to Graph's default permissions (Mail.Send, granted via admin
-// consent on the app registration). Fetched fresh per send; volume here is low
-// (magic-link requests are already rate-limited to 5/email/hour), so token caching
-// isn't worth the added complexity yet.
+// Entra app registration uses a long-lived self-signed cert instead of a client
+// secret, so token requests authenticate via a signed JWT client assertion (RFC 7523)
+// rather than client_secret. Thumbprint identifies which cert to Entra — it's public
+// metadata (not sensitive, unlike the private key), so it's fine as a source constant.
+const MS_GRAPH_CERT_THUMBPRINT_HEX = 'B8:62:7B:3D:F0:0D:74:36:8A:5B:13:72:51:F8:9E:2D:66:D6:62:49';
+
+function uint8ArrayToBase64Url(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function jsonToBase64Url(obj) {
+  return uint8ArrayToBase64Url(new TextEncoder().encode(JSON.stringify(obj)));
+}
+
+function hexThumbprintToBase64Url(hex) {
+  const cleaned = hex.replace(/:/g, '');
+  const bytes = new Uint8Array(cleaned.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(cleaned.substr(i * 2, 2), 16);
+  }
+  return uint8ArrayToBase64Url(bytes);
+}
+
+// MS_GRAPH_CLIENT_CERT_KEY must be a PEM-encoded PKCS8 private key ("BEGIN PRIVATE
+// KEY", not "BEGIN RSA PRIVATE KEY" — that's the older PKCS1 format and importKey
+// here won't accept it directly; it'd need `openssl pkcs8 -topk8` first).
+async function importGraphPrivateKey(pem) {
+  const pemContents = pem.replace(/-----BEGIN [A-Z ]+-----|-----END [A-Z ]+-----|\s+/g, '');
+  const binaryDer = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+  return crypto.subtle.importKey(
+    'pkcs8',
+    binaryDer.buffer,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+}
+
+async function buildClientAssertionJwt(env) {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT', x5t: hexThumbprintToBase64Url(MS_GRAPH_CERT_THUMBPRINT_HEX) };
+  const payload = {
+    iss: env.MS_GRAPH_CLIENT_ID,
+    sub: env.MS_GRAPH_CLIENT_ID,
+    aud: `https://login.microsoftonline.com/${env.MS_GRAPH_TENANT_ID}/oauth2/v2.0/token`,
+    jti: crypto.randomUUID(),
+    nbf: now,
+    exp: now + 5 * 60,
+  };
+
+  const signingInput = `${jsonToBase64Url(header)}.${jsonToBase64Url(payload)}`;
+  const privateKey = await importGraphPrivateKey(env.MS_GRAPH_CLIENT_CERT_KEY);
+  const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, new TextEncoder().encode(signingInput));
+
+  return `${signingInput}.${uint8ArrayToBase64Url(new Uint8Array(signature))}`;
+}
+
+// Client-credentials OAuth2 flow against Entra ID (Azure AD), authenticated via a
+// signed JWT client assertion (certificate-based) rather than a client secret — gets
+// an app-only access token scoped to Graph's default permissions (Mail.Send, granted
+// via admin consent). Fetched fresh per send; volume here is low (magic-link requests
+// are already rate-limited to 5/email/hour), so token caching isn't worth it yet.
 async function getGraphAccessToken(env) {
+  const clientAssertion = await buildClientAssertionJwt(env);
+
   const resp = await fetch(`https://login.microsoftonline.com/${env.MS_GRAPH_TENANT_ID}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
       client_id: env.MS_GRAPH_CLIENT_ID,
-      client_secret: env.MS_GRAPH_CLIENT_SECRET,
+      client_assertion_type: 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
+      client_assertion: clientAssertion,
       scope: 'https://graph.microsoft.com/.default',
     }),
   });
@@ -121,7 +183,7 @@ export async function sendMagicLinkEmail(env, email, verifyUrl) {
   const subject = 'Your Arli Audits login link';
   const text = `Click below to log in to your Arli Audits account. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can ignore this email.`;
 
-  if (!env.MS_GRAPH_TENANT_ID || !env.MS_GRAPH_CLIENT_ID || !env.MS_GRAPH_CLIENT_SECRET || !env.MS_GRAPH_SENDER) {
+  if (!env.MS_GRAPH_TENANT_ID || !env.MS_GRAPH_CLIENT_ID || !env.MS_GRAPH_CLIENT_CERT_KEY || !env.MS_GRAPH_SENDER) {
     console.log(`[stub email] magic link for ${email}: ${verifyUrl}`);
     return;
   }
