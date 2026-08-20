@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
 
   let prescan;
   try {
-    prescan = await runPrescan(asin, marketplace);
+    prescan = await runPrescan(asin, marketplace, env);
   } catch (e) {
     prescan = { status: 'unavailable', reason: 'error' };
   }

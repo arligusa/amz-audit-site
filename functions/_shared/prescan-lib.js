@@ -47,11 +47,95 @@ export function marketplaceToDomain(marketplace) {
   return map[marketplace] || 'amazon.com';
 }
 
+const PRESCAN_CACHE_KEY_TTL = { ok: 24 * 60, blocked: 10, unavailable: 10 }; // minutes
+const FETCH_RATE_CAP_PER_MINUTE = 20;
+const FETCH_LOG_RETENTION_MINUTES = 5;
+
+function prescanCacheKey(asin, marketplace) {
+  return `${asin}:${marketplace}`;
+}
+
+// Serves a cached pre-scan if we have one that hasn't aged out. Success results are kept
+// for a full day (repeat scans of the same listing are common); blocked/unavailable results
+// are kept only briefly, so a transient hiccup doesn't suppress future attempts for hours.
+async function getCachedPrescan(env, asin, marketplace) {
+  if (!env?.DB) return null;
+
+  const row = await env.DB.prepare('SELECT result, created_at FROM prescan_cache WHERE cache_key = ?')
+    .bind(prescanCacheKey(asin, marketplace))
+    .first();
+  if (!row) return null;
+
+  let result;
+  try {
+    result = JSON.parse(row.result);
+  } catch (e) {
+    return null;
+  }
+
+  const ttlMinutes = PRESCAN_CACHE_KEY_TTL[result.status] ?? 10;
+  const ageMinutes = (Date.now() - new Date(row.created_at).getTime()) / 60000;
+  if (ageMinutes > ttlMinutes) return null;
+
+  return result;
+}
+
+async function setCachedPrescan(env, asin, marketplace, result) {
+  if (!env?.DB) return;
+  await env.DB.prepare(
+    `INSERT INTO prescan_cache (cache_key, result, created_at) VALUES (?,?,?)
+     ON CONFLICT(cache_key) DO UPDATE SET result = excluded.result, created_at = excluded.created_at`
+  )
+    .bind(prescanCacheKey(asin, marketplace), JSON.stringify(result), new Date().toISOString())
+    .run();
+}
+
+// Self-imposed cap on outbound Amazon fetches per minute across the whole Worker, so a
+// traffic spike here doesn't slam Amazon all at once. Backs off briefly rather than failing
+// the visitor's request outright. This throttles our own request volume — it does not
+// attempt to disguise or evade Amazon's bot detection in any way.
+async function throttleFetch(env) {
+  if (!env?.DB) return;
+
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 60 * 1000).toISOString();
+  const row = await env.DB.prepare('SELECT COUNT(*) as count FROM prescan_fetch_log WHERE fetched_at > ?')
+    .bind(cutoff)
+    .first();
+
+  if (row.count >= FETCH_RATE_CAP_PER_MINUTE) {
+    await new Promise((resolve) => setTimeout(resolve, 1500 + Math.random() * 1500));
+  }
+
+  await env.DB.prepare('INSERT INTO prescan_fetch_log (fetched_at) VALUES (?)').bind(now.toISOString()).run();
+
+  const retentionCutoff = new Date(now.getTime() - FETCH_LOG_RETENTION_MINUTES * 60 * 1000).toISOString();
+  await env.DB.prepare('DELETE FROM prescan_fetch_log WHERE fetched_at < ?').bind(retentionCutoff).run();
+}
+
+// Small randomized delay before each Amazon fetch, just to smooth out bursts rather than
+// firing requests in a tight loop — not a bot-detection workaround, just being a polite client.
+function jitter() {
+  return new Promise((resolve) => setTimeout(resolve, 200 + Math.random() * 600));
+}
+
 // Fully automated, rules-based structural pre-scan of a public Amazon listing page.
 // No LLM call — this needs to return in a few seconds and cost nothing per request.
 // Never fabricates a finding: if the fetch fails or looks blocked, it says so honestly
 // instead of inventing numbers.
-export async function runPrescan(asin, marketplace) {
+export async function runPrescan(asin, marketplace, env) {
+  const cached = await getCachedPrescan(env, asin, marketplace);
+  if (cached) return cached;
+
+  const result = await fetchAndScorePrescan(asin, marketplace, env);
+  await setCachedPrescan(env, asin, marketplace, result);
+  return result;
+}
+
+async function fetchAndScorePrescan(asin, marketplace, env) {
+  await throttleFetch(env);
+  await jitter();
+
   const domain = marketplaceToDomain(marketplace);
   const url = `https://www.${domain}/dp/${asin}`;
 
