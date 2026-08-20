@@ -31,7 +31,7 @@ export async function onRequestGet(context) {
 
   const row = await env.DB.prepare('SELECT * FROM submissions WHERE id = ? AND edit_token = ?').bind(id, token).first();
   if (!row) {
-    return json({ error: "We couldn't find that submission. Double-check the link, or email contact@amzaudits.arligusa.com." }, 404);
+    return json({ error: "We couldn't find that submission. Double-check the link, or email contact@arli.arligusa.com." }, 404);
   }
 
   return json({ submission: sanitize(row) });
@@ -55,7 +55,7 @@ export async function onRequestPost(context) {
 
   const row = await env.DB.prepare('SELECT * FROM submissions WHERE id = ? AND edit_token = ?').bind(id, token).first();
   if (!row) {
-    return json({ error: "We couldn't find that submission. Double-check the link, or email contact@amzaudits.arligusa.com." }, 404);
+    return json({ error: "We couldn't find that submission. Double-check the link, or email contact@arli.arligusa.com." }, 404);
   }
 
   const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : row.email;
