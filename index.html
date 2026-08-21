@@ -134,14 +134,6 @@
   }
   .steps li strong { display: block; margin-bottom: 2px; }
   .steps li span.detail { color: var(--ink-soft); font-size: 14px; }
-  .trust-list { list-style: none; padding: 0; margin: 0; }
-  .trust-list li {
-    padding: 16px 0;
-    border-bottom: 1px solid var(--line);
-    font-size: 15px;
-  }
-  .trust-list li:last-child { border-bottom: none; }
-  .trust-list li strong { display: block; margin-bottom: 4px; }
   .sample-box {
     border: 1px solid var(--line);
     border-radius: 12px;
@@ -156,22 +148,6 @@
   }
   .sample-box .sample-head strong { color: var(--ink); }
   .sample-body { padding: 20px; }
-  .score-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-bottom: 18px; }
-  .score-table th, .score-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
-  .score-table th { color: var(--ink-soft); font-weight: 600; font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.03em; }
-  .finding { margin-bottom: 16px; font-size: 14.5px; }
-  .finding strong { display: block; margin-bottom: 3px; }
-  .finding .fix { color: var(--accent); font-weight: 600; }
-  details summary {
-    cursor: pointer;
-    font-weight: 600;
-    padding: 14px 0;
-    font-size: 15px;
-    list-style: none;
-  }
-  details summary::-webkit-details-marker { display: none; }
-  details summary::before { content: "+ "; color: var(--accent); }
-  details[open] summary::before { content: "\2212 "; }
   footer {
     border-top: 1px solid var(--line);
     padding: 32px 0 48px;
@@ -209,9 +185,12 @@
   .btn-block { width: 100%; text-align: center; display: block; border: none; cursor: pointer; }
   .prescan-loading { text-align: center; padding: 20px 0; color: var(--ink-soft); font-size: 14px; }
   .prescan-score { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-  .prescan-findings { list-style: none; padding: 0; margin: 0 0 10px; }
-  .prescan-findings li { font-size: 13.5px; color: var(--ink-soft); padding: 7px 0; border-bottom: 1px solid var(--line); }
-  .prescan-findings li:last-child { border-bottom: none; }
+  .prescan-categories { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 6px; }
+  .prescan-categories li { display: flex; align-items: center; gap: 9px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .prescan-categories li:last-child { border-bottom: none; }
+  .prescan-categories .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .prescan-categories .cat-green .dot { background: var(--accent); }
+  .prescan-categories .cat-red .dot { background: #b42318; }
   .prescan-fallback { font-size: 13.5px; color: var(--ink-soft); background: var(--paper-soft); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
   .edit-link-box { font-size: 12px; color: #8a91a3; margin-top: 14px; word-break: break-all; }
   .edit-link-box a { color: #8a91a3; }
@@ -312,67 +291,23 @@
     <p class="sub">Illustrative excerpt built from a real, public Amazon listing — not a paid client deliverable, no private data used.</p>
     <div class="sample-box">
       <div class="sample-head">
-        <strong>Listing used:</strong> Owala FreeSip Insulated Stainless Steel Water Bottle (24oz) — a well-known, stable listing chosen so you can benchmark against something familiar. Every finding below is an example of the kind of thing a real audit surfaces.
+        <strong>Listing used:</strong> Owala FreeSip Insulated Stainless Steel Water Bottle (24oz) — a well-known, stable listing chosen so you can benchmark against something familiar. This is exactly what the free pre-scan shows on your own listing too.
       </div>
       <div class="sample-body">
-        <table class="score-table">
-          <tr><th>Dimension</th><th>Score</th></tr>
-          <tr><td>Title clarity &amp; keyword front-loading</td><td>4/5</td></tr>
-          <tr><td>Bullet benefit-clarity</td><td>3/5</td></tr>
-          <tr><td>Image completeness</td><td>4/5</td></tr>
-          <tr><td>Social-proof signal strength</td><td>4/5</td></tr>
-          <tr><td>Mobile readability</td><td>3/5</td></tr>
-          <tr><td>Question-answering coverage</td><td>3/5</td></tr>
-        </table>
-
-        <div class="finding">
-          <strong>Title front-loads brand/style before the search-driving attribute.</strong>
-          Shoppers scanning results on mobile often only see the first 60-80 characters before truncation.
-          <div class="fix">Fix: reorder to brand → capacity → material → category keyword → differentiator.</div>
-        </div>
-        <div class="finding">
-          <strong>A mid-list bullet leads with a feature, not a benefit.</strong>
-          "Push-button locking spout" doesn't tell a shopper why it matters to them.
-          <div class="fix">Fix: lead with the benefit — "Leak-proof for your bag or car" — then the mechanism.</div>
-        </div>
-        <div class="finding">
-          <strong>No dedicated size/scale image in the gallery.</strong>
-          "Is this actually as big as I think" is one of the most common pre-purchase hesitations.
-          <div class="fix">Fix: add one size-comparison image with capacity called out in large text.</div>
-        </div>
-
-        <details>
-          <summary>See 2 more example findings</summary>
-          <div class="finding">
-            <strong>Review volume is strong but not contextualized on-page.</strong>
-            Star ratings are easy to glance past without a specific, quotable reinforcement.
-            <div class="fix">Fix: add a social-proof-forward image or A+ module surfacing a credible pattern from reviews.</div>
-          </div>
-          <div class="finding">
-            <strong>Care/compatibility questions aren't pre-answered.</strong>
-            Predictable questions either slow-burn in public Q&amp;A or become return reasons.
-            <div class="fix">Fix: add a short FAQ-style A+ module for the 3-4 most predictable questions.</div>
-          </div>
-        </details>
-
+        <ul class="prescan-categories">
+          <li class="cat-green"><span class="dot"></span>Title</li>
+          <li class="cat-red"><span class="dot"></span>Bullet points</li>
+          <li class="cat-green"><span class="dot"></span>Images</li>
+          <li class="cat-red"><span class="dot"></span>A+ Content</li>
+          <li class="cat-green"><span class="dot"></span>Star rating</li>
+          <li class="cat-green"><span class="dot"></span>Review volume</li>
+          <li class="cat-green"><span class="dot"></span>Buy Box / availability</li>
+        </ul>
         <p style="font-size:13.5px;color:var(--ink-soft);margin-top:18px;padding-top:16px;border-top:1px solid var(--line);">
-          A real paid audit goes deeper: backend search terms, actual PPC performance data, a 2-3 competitor comparison, and a fix list ranked by impact vs. effort — all specific to your ASIN and your data.
+          A real paid audit goes deeper: specific findings for every red flag, backend search terms, actual PPC performance data, a 2-3 competitor comparison, and a fix list ranked by impact vs. effort — all specific to your ASIN and your data.
         </p>
       </div>
     </div>
-  </div>
-</section>
-
-<section id="trust">
-  <div class="wrap">
-    <h2>Why trust an independent operator with no reviews yet</h2>
-    <p class="sub">Fair question. Instead of asking you to take it on faith:</p>
-    <ul class="trust-list">
-      <li><strong>Look at the work itself.</strong> The free sample above is exactly how the real analysis is structured — judge the thinking before you pay for anything.</li>
-      <li><strong>The scope is narrow on purpose.</strong> Not a vague "we'll optimize your whole account" promise — one clearly defined deliverable, a fixed price, a fixed deadline.</li>
-      <li><strong>Same-day is the target, 48 hours is the guarantee — not a marketing line.</strong> Most orders go out the same day they're placed. If a report isn't delivered within 48 hours of a completed intake and payment, that's a failure of the stated offer — nothing to just take on trust.</li>
-    </ul>
-    <p style="font-size:14px;color:var(--ink-soft);">No fabricated testimonials, no invented client roster. Just the sample, the scope, and the deadline.</p>
   </div>
 </section>
 
@@ -529,12 +464,14 @@
     var editUrl = window.location.origin + '/edit.html?id=' + encodeURIComponent(id) + '&token=' + encodeURIComponent(token);
     var html = '';
 
-    if (prescan.status === 'ok') {
-      html += '<div class="prescan-score">Quick pre-scan of ' + escapeHtml(asin) + ': ' + prescan.score + '/100</div>';
-      html += '<ul class="prescan-findings">';
-      prescan.findings.forEach(function (f) { html += '<li>' + escapeHtml(f) + '</li>'; });
+    if (prescan.status === 'ok' && prescan.categories && prescan.categories.length) {
+      html += '<div class="prescan-score">Quick pre-scan of ' + escapeHtml(asin) + '</div>';
+      html += '<ul class="prescan-categories">';
+      prescan.categories.forEach(function (c) {
+        html += '<li class="cat-' + c.status + '"><span class="dot"></span>' + escapeHtml(c.label) + '</li>';
+      });
       html += '</ul>';
-      html += '<p style="font-size:12.5px;color:var(--ink-soft);margin:-2px 0 16px;">This is an automated structural check — the paid audit goes far deeper (backend search terms, competitor comparison, and for PPC, your actual Search Term Report).</p>';
+      html += '<p style="font-size:12.5px;color:var(--ink-soft);margin:-2px 0 16px;">This is a quick structural check — the paid audit goes far deeper, with specific findings and a prioritized fix list tied to your real data.</p>';
     } else {
       html += '<div class="prescan-fallback">We couldn’t run an automated pre-scan on this listing right now (Amazon limits automated checks sometimes) — no problem, this doesn’t affect your audit. We’ll do the full manual review either way, within 48 hours of purchase.</div>';
     }
