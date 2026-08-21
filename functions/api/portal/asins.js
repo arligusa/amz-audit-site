@@ -9,7 +9,8 @@ export async function onRequestGet(context) {
   const { results } = await env.DB.prepare(
     `SELECT a.*,
        r.id as latest_report_id, r.status as latest_report_status,
-       r.audit_type as latest_report_audit_type, r.delivered_at as latest_report_delivered_at
+       r.audit_type as latest_report_audit_type, r.delivered_at as latest_report_delivered_at,
+       r.rewrite_status as latest_report_rewrite_status
      FROM asins a
      LEFT JOIN reports r ON r.id = (
        SELECT id FROM reports WHERE asin_id = a.id ORDER BY created_at DESC LIMIT 1
@@ -20,21 +21,30 @@ export async function onRequestGet(context) {
     .bind(auth.customer.id)
     .all();
 
-  const asins = results.map((row) => ({
-    id: row.id,
-    asin: row.asin,
-    marketplace: row.marketplace,
-    label: row.label,
-    created_at: row.created_at,
-    latest_report: row.latest_report_id
-      ? {
-          id: row.latest_report_id,
-          status: row.latest_report_status,
-          audit_type: row.latest_report_audit_type,
-          delivered_at: row.latest_report_delivered_at,
-        }
-      : null,
-  }));
+  const asins = results.map((row) => {
+    const rewriteEligible =
+      row.latest_report_status === 'delivered' &&
+      ['listing', 'both'].includes(row.latest_report_audit_type) &&
+      row.latest_report_rewrite_status === 'not_offered';
+
+    return {
+      id: row.id,
+      asin: row.asin,
+      marketplace: row.marketplace,
+      label: row.label,
+      created_at: row.created_at,
+      latest_report: row.latest_report_id
+        ? {
+            id: row.latest_report_id,
+            status: row.latest_report_status,
+            audit_type: row.latest_report_audit_type,
+            delivered_at: row.latest_report_delivered_at,
+            rewrite_status: row.latest_report_rewrite_status,
+            rewrite_eligible: rewriteEligible,
+          }
+        : null,
+    };
+  });
 
   return json({ asins });
 }

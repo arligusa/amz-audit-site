@@ -175,15 +175,23 @@
       var statusClass = report ? 'status-' + report.status : 'status-none';
       var statusText = report ? (STATUS_LABEL[report.status] || report.status) : 'No audit yet';
       var actionHtml;
+      var rewriteHtml = '';
       if (report && report.status === 'delivered') {
         actionHtml = '<a class="btn-secondary" href="/api/portal/reports/' + encodeURIComponent(report.id) + '/download">Download report</a>';
+        if (report.rewrite_eligible) {
+          rewriteHtml = '<button class="btn-primary rewrite-btn" data-report-id="' + report.id + '">Rewrite my listing — $79</button>';
+        } else if (report.rewrite_status === 'purchased' || report.rewrite_status === 'in_progress') {
+          rewriteHtml = '<span class="status-pill status-in_progress">Rewrite in progress</span>';
+        } else if (report.rewrite_status === 'delivered') {
+          rewriteHtml = '<a class="btn-secondary" href="/api/portal/reports/' + encodeURIComponent(report.id) + '/rewrite-download">Download rewrite</a>';
+        }
       } else {
         actionHtml = '<button class="btn-primary buy-btn" data-asin-id="' + a.id + '">' + (report ? 'Order another audit' : 'Order audit') + '</button>';
       }
       return '<div class="asin-row">' +
         '<div><div class="asin-main">' + escapeHtml(a.label || a.asin) + '</div>' +
         '<div class="asin-sub">' + escapeHtml(a.asin) + ' &middot; ' + escapeHtml(a.marketplace) + '</div></div>' +
-        '<div class="row-actions"><span class="status-pill ' + statusClass + '">' + escapeHtml(statusText) + '</span>' + actionHtml + '</div>' +
+        '<div class="row-actions"><span class="status-pill ' + statusClass + '">' + escapeHtml(statusText) + '</span>' + actionHtml + rewriteHtml + '</div>' +
         '</div>';
     }).join('');
 
@@ -195,6 +203,31 @@
         checkoutSubmit.textContent = 'Proceed to purchase';
         updateStrVisibility();
         dialog.showModal();
+      });
+    });
+
+    Array.prototype.forEach.call(listEl.querySelectorAll('.rewrite-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        var reportId = btn.getAttribute('data-report-id');
+        btn.disabled = true;
+        btn.textContent = 'Redirecting to checkout…';
+
+        fetch('/api/portal/reports/' + encodeURIComponent(reportId) + '/rewrite-checkout', { method: 'POST' })
+          .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+          .then(function (res) {
+            if (!res.ok) {
+              btn.disabled = false;
+              btn.textContent = 'Rewrite my listing — $79';
+              alert(res.data && res.data.error ? res.data.error : 'Could not start checkout — please try again.');
+              return;
+            }
+            window.location.href = res.data.checkoutUrl;
+          })
+          .catch(function () {
+            btn.disabled = false;
+            btn.textContent = 'Rewrite my listing — $79';
+            alert('Network error — please try again.');
+          });
       });
     });
   }
