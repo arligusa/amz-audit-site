@@ -143,7 +143,7 @@ async function getGraphAccessToken(env) {
   });
 
   if (!resp.ok) {
-    throw new Error(`Graph token request failed: ${resp.status}`);
+    throw new Error(`Graph token request failed: ${resp.status} — ${await resp.text()}`);
   }
 
   const data = await resp.json();
@@ -170,7 +170,7 @@ async function sendViaGraph(env, email, subject, text) {
   });
 
   if (!resp.ok) {
-    throw new Error(`Graph sendMail failed: ${resp.status}`);
+    throw new Error(`Graph sendMail failed: ${resp.status} — ${await resp.text()}`);
   }
 }
 
@@ -191,6 +191,6 @@ export async function sendMagicLinkEmail(env, email, verifyUrl) {
   try {
     await sendViaGraph(env, email, subject, text);
   } catch (e) {
-    console.log(`[email send failed, logging link instead] ${email}: ${verifyUrl} — ${e.message}`);
+    console.log(`[email send failed, logging link instead] ${email}: ${verifyUrl} — ${e.name}: ${e.message}`);
   }
 }
