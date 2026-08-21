@@ -1,5 +1,5 @@
 import { json, isValidEmail } from '../../_shared/prescan-lib.js';
-import { newToken, magicLinkExpiry, rateLimitWindowStart, RATE_LIMIT_MAX, sendMagicLinkEmail } from '../../_shared/auth-lib.js';
+import { newToken, hashToken, magicLinkExpiry, rateLimitWindowStart, RATE_LIMIT_MAX, sendMagicLinkEmail } from '../../_shared/auth-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -27,10 +27,11 @@ export async function onRequestPost(context) {
 
   if (rateRow.count < RATE_LIMIT_MAX) {
     const token = newToken();
+    const tokenHash = await hashToken(token);
     await env.DB.prepare(
       'INSERT INTO magic_links (token, customer_email, created_at, expires_at, used_at) VALUES (?,?,?,?,NULL)'
     )
-      .bind(token, email, nowIso, magicLinkExpiry(now))
+      .bind(tokenHash, email, nowIso, magicLinkExpiry(now))
       .run();
 
     const verifyUrl = new URL('/api/auth/verify', request.url);

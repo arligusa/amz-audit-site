@@ -11,6 +11,16 @@ export function newToken() {
   return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 }
 
+// D1's `token` columns (magic_links, sessions) store this hash, never the raw bearer
+// value — same reasoning as password hashing. The raw token only ever exists in the
+// emailed URL / session cookie, so a DB read alone can't be used to impersonate anyone.
+export async function hashToken(token) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 export function magicLinkExpiry(from) {
   return new Date(from.getTime() + MAGIC_LINK_MINUTES * 60 * 1000).toISOString();
 }
@@ -43,14 +53,15 @@ export async function requireSession(env, request) {
   const token = getSessionToken(request);
   if (!token) return null;
 
-  const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(token).first();
+  const tokenHash = await hashToken(token);
+  const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ?').bind(tokenHash).first();
   if (!session || new Date(session.expires_at) < new Date()) return null;
 
   const customer = await env.DB.prepare('SELECT * FROM customers WHERE id = ?').bind(session.customer_id).first();
   if (!customer) return null;
 
   await env.DB.prepare('UPDATE sessions SET last_seen_at = ? WHERE token = ?')
-    .bind(new Date().toISOString(), token)
+    .bind(new Date().toISOString(), tokenHash)
     .run();
 
   return { customer, session };
