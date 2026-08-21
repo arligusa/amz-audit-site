@@ -192,5 +192,19 @@ export async function sendMagicLinkEmail(env, email, verifyUrl) {
     await sendViaGraph(env, email, subject, text);
   } catch (e) {
     console.log(`[email send failed, logging link instead] ${email}: ${verifyUrl} — ${e.name}: ${e.message}`);
+    // Cloudflare's dashboard doesn't surface Pages Functions console logs for this
+    // project, so mirror the failure into D1 as a queryable fallback (temporary,
+    // for diagnosing the Graph API rollout — not a permanent audit table).
+    if (env.DB) {
+      try {
+        await env.DB.prepare(
+          'INSERT INTO email_send_errors (email, error_name, error_message, created_at) VALUES (?,?,?,?)'
+        )
+          .bind(email, e.name || null, e.message || null, new Date().toISOString())
+          .run();
+      } catch (e2) {
+        console.log(`[email_send_errors insert also failed] ${e2.message}`);
+      }
+    }
   }
 }
