@@ -33,18 +33,38 @@
     line-height: 1.6;
   }
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+  /* Dark hero + header treatment (Direction C, J-approved) — scoped to just these two
+     elements. Redeclaring --accent/--accent-ink inside this scope means every existing
+     rule below that already reads var(--accent) (badge, buttons, brand accent) picks up
+     the amber value automatically here, while staying the original green everywhere else
+     on the page — nothing outside header.top/.hero needed to change. */
+  header.top, .hero {
+    --hero-bg: #10151C;
+    --hero-ink: #F5F3EC;
+    --hero-sub: #C7CBC9;
+    --hero-header-border: rgba(255,255,255,0.08);
+    --accent: #F5A524;
+    --accent-ink: #10151C;
+    --eyebrow-bg: #2A2116;
+    --eyebrow-ink: #F5A524;
+    --btn-outline-border: #F5A524;
+    --btn-outline-ink: #F5A524;
+    --hero-microcopy: #9AA19F;
+    background: var(--hero-bg);
+  }
   header.top {
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hero-header-border);
     padding: 20px 0;
   }
   header.top .wrap { display: flex; align-items: center; justify-content: space-between; }
-  .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; }
+  .brand { font-weight: 700; font-size: 17px; letter-spacing: -0.01em; color: var(--hero-ink); }
   .brand span { color: var(--accent); }
   .nav-actions { display: flex; align-items: center; gap: 16px; }
-  .nav-actions a.nav-login { color: var(--ink-soft); text-decoration: none; font-size: 14px; font-weight: 600; }
+  .nav-actions a.nav-login { color: var(--hero-sub); text-decoration: none; font-size: 14px; font-weight: 600; }
   .top a.cta-mini {
-    background: var(--ink);
-    color: #fff;
+    background: var(--accent);
+    color: var(--accent-ink);
     padding: 9px 16px;
     border-radius: 7px;
     text-decoration: none;
@@ -57,10 +77,11 @@
     line-height: 1.15;
     margin: 0 0 16px;
     letter-spacing: -0.02em;
+    color: var(--hero-ink);
   }
   .hero p.lead {
     font-size: 18px;
-    color: var(--ink-soft);
+    color: var(--hero-sub);
     max-width: 560px;
     margin: 0 0 28px;
   }
@@ -74,6 +95,7 @@
     border-radius: 999px;
     margin-bottom: 18px;
   }
+  .hero .badge { background: var(--eyebrow-bg); color: var(--eyebrow-ink); }
   .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
   .btn-primary {
     background: var(--accent);
@@ -85,6 +107,7 @@
     font-size: 15px;
     display: inline-block;
   }
+  .hero .btn-primary { color: var(--accent-ink); }
   .btn-secondary {
     background: var(--paper);
     color: var(--ink);
@@ -95,6 +118,11 @@
     font-weight: 600;
     font-size: 15px;
     display: inline-block;
+  }
+  .hero .btn-secondary {
+    background: transparent;
+    color: var(--btn-outline-ink);
+    border-color: var(--btn-outline-border);
   }
   section { padding: 44px 0; border-top: 1px solid var(--line); }
   section h2 { font-size: 24px; margin: 0 0 8px; letter-spacing: -0.01em; }
