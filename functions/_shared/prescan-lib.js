@@ -210,65 +210,29 @@ async function fetchAndScorePrescan(asin, marketplace, env) {
   const ratingMatch = ratingAttr.match(/([\d.]+)\s+out of/i);
   const rating = ratingMatch ? parseFloat(ratingMatch[1]) : null;
 
-  let score = 100;
-  const findings = [];
-
-  if (titleLen < 80) {
-    score -= 15;
-    findings.push(`Title is short (${titleLen} characters) — there's likely unused keyword room.`);
-  } else if (titleLen > 200) {
-    score -= 5;
-    findings.push(`Title runs long (${titleLen} characters) — worth checking it isn't getting cut off on mobile.`);
-  } else {
-    findings.push(`Title length (${titleLen} characters) is in a reasonable range.`);
-  }
-
-  if (bulletCount < 5) {
-    score -= 15;
-    findings.push(`Only ${bulletCount} of 5 bullet points are in use — unused space that could be selling.`);
-  } else {
-    findings.push(`All 5 bullet points are in use.`);
-  }
-
-  if (imageCount > 0 && imageCount < 5) {
-    score -= 10;
-    findings.push(`${imageCount} images detected — most well-optimized listings use 6-9.`);
-  } else if (imageCount >= 5) {
-    findings.push(`${imageCount} images detected — solid image count.`);
-  }
-
-  if (!aplus) {
-    score -= 15;
-    findings.push(`No A+ Content detected — this is usually one of the highest-leverage gaps to fix.`);
-  } else {
-    findings.push(`A+ Content is present.`);
-  }
+  // Free tier deliberately shows only a category pass/fail, never the underlying
+  // numbers or specific findings — those are reserved for the paid audit, both to
+  // give it real value beyond the free tool and so the scoring thresholds/method
+  // can't be reverse-engineered from the free tier alone.
+  const categories = [
+    { key: 'title', label: 'Title', status: titleLen < 80 ? 'red' : 'green' },
+    { key: 'bullets', label: 'Bullet points', status: bulletCount < 5 ? 'red' : 'green' },
+    { key: 'images', label: 'Images', status: imageCount < 5 ? 'red' : 'green' },
+    { key: 'aplus', label: 'A+ Content', status: aplus ? 'green' : 'red' },
+  ];
 
   if (rating !== null) {
-    if (rating < 4.0) {
-      score -= 10;
-      findings.push(`Star rating is ${rating} — below the 4.0+ range shoppers tend to trust.`);
-    } else {
-      findings.push(`Star rating is ${rating} — healthy.`);
-    }
+    categories.push({ key: 'rating', label: 'Star rating', status: rating < 4.0 ? 'red' : 'green' });
+  }
+  if (reviewCount !== null) {
+    categories.push({ key: 'reviews', label: 'Review volume', status: reviewCount < 20 ? 'red' : 'green' });
   }
 
-  if (reviewCount !== null && reviewCount < 20) {
-    score -= 5;
-    findings.push(`Only ${reviewCount} reviews — a low review count can suppress conversion.`);
-  }
+  categories.push({
+    key: 'availability',
+    label: 'Buy Box / availability',
+    status: outOfStock || !addToCart ? 'red' : 'green',
+  });
 
-  if (outOfStock || !addToCart) {
-    score -= 10;
-    findings.push(`Buy Box / Add to Cart didn't appear active on this fetch — worth double-checking availability.`);
-  }
-
-  score = Math.max(5, Math.min(100, score));
-
-  return {
-    status: 'ok',
-    score,
-    findings: findings.slice(0, 6),
-    signals: { titleLen, bulletCount, imageCount, aplus, rating, reviewCount },
-  };
+  return { status: 'ok', categories };
 }
