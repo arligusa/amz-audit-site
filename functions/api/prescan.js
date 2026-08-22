@@ -27,6 +27,12 @@ export async function onRequestPost(context) {
   if (!['listing', 'ppc', 'both'].includes(auditType)) {
     return json({ error: 'Please choose an audit type.' }, 400);
   }
+  if (['ppc', 'both'].includes(auditType) && !strProvided) {
+    return json(
+      { error: "A PPC audit requires your Search Term Report. Check the box to confirm you'll send it, or switch to a Listing-only audit." },
+      400
+    );
+  }
 
   const asin = extractAsin(rawInput);
   if (!asin) {

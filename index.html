@@ -211,6 +211,11 @@
   .str-note.show { display: block; }
   .str-note label { display: block; }
   .str-note label input { width: auto; display: inline-block; margin-right: 6px; }
+  .str-howto { background: var(--bg-soft, #f6f6f4); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; font-size: 13px; }
+  .str-howto strong { display: block; margin-bottom: 6px; }
+  .str-howto ol { margin: 0; padding-left: 18px; }
+  .str-howto ol li { margin-bottom: 4px; }
+  .str-howto-note { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; }
   .form-err { color: #b42318; font-size: 13px; margin-top: 10px; display: none; text-align: left; }
   .form-err.show { display: block; }
   .btn-block { width: 100%; text-align: center; display: block; border: none; cursor: pointer; }
@@ -363,7 +368,21 @@
           </div>
 
           <div id="str-note-wrap" class="str-note">
-            <label><input type="checkbox" id="in-str-check">I have my Search Term Report ready to send after purchase</label>
+            <div class="str-howto">
+              <strong>How to pull your Search Term Report</strong>
+              <ol>
+                <li>Sign in at advertising.amazon.com (or Seller Central → Advertising → Campaign Manager).</li>
+                <li>Go to Measurement &amp; Reporting → Sponsored ads reporting → Create report.</li>
+                <li>Report type: <strong>Search term report</strong>. Pull one for Sponsored Products and one for Sponsored Brands if you run both.</li>
+                <li>Time unit: <strong>Summary</strong> (not Daily).</li>
+                <li>Date range: last 30&ndash;60 days.</li>
+                <li>Format: .csv or .xlsx, whichever Amazon offers.</li>
+                <li>Download it as-is once it's ready (a few minutes, up to ~45 min for long ranges) — don't filter or resave it.</li>
+                <li>Email the file to contact@arli.arligusa.com with your order number in the subject line. <strong>We can't start your PPC audit until we have it.</strong></li>
+              </ol>
+              <p class="str-howto-note">Older accounts: Campaign Manager → Bulk Operations → Download campaigns → Enabled &amp; Paused → check Sponsored Products / Sponsored Brands search-term data.</p>
+            </div>
+            <label><input type="checkbox" id="in-str-check" required>I'll send my Search Term Report to contact@arli.arligusa.com after purchase</label>
             <textarea id="in-str-note" placeholder="Optional — anything about your PPC setup worth knowing now (monthly ad spend, campaign count, etc.)"></textarea>
           </div>
 

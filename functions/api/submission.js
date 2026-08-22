@@ -76,6 +76,13 @@ export async function onRequestPost(context) {
   const strNote = body.str_note !== undefined ? String(body.str_note).trim().slice(0, 500) : row.str_note;
   const notes = body.notes !== undefined ? String(body.notes).trim().slice(0, 1000) : row.notes;
 
+  if (['ppc', 'both'].includes(auditType) && !strProvided) {
+    return json(
+      { error: "A PPC audit requires your Search Term Report. Check the box to confirm you'll send it, or switch to a Listing-only audit." },
+      400
+    );
+  }
+
   let prescan;
   try {
     prescan = await runPrescan(asin, marketplace, env);
