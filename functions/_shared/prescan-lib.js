@@ -234,5 +234,16 @@ async function fetchAndScorePrescan(asin, marketplace, env) {
     status: outOfStock || !addToCart ? 'red' : 'green',
   });
 
-  return { status: 'ok', categories };
+  // Per-category logic above is unchanged — only the *output* is rolled up into one
+  // public signal now, so the free tier can't be used to reverse-engineer which
+  // specific thing is wrong. Binary: green only if every category is green. This is
+  // computed server-side (not just hidden in the UI) so the individual categories
+  // never appear in the API response at all, same reasoning as never returning the
+  // raw signal numbers.
+  const overallStatus = categories.every((c) => c.status === 'green') ? 'green' : 'red';
+
+  return {
+    status: 'ok',
+    categories: [{ key: 'overall', label: 'Overall Listing Health', status: overallStatus }],
+  };
 }
