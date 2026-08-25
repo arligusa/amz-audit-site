@@ -101,7 +101,34 @@
           <option value="amazon.com.au">amazon.com.au (Australia)</option>
         </select>
 
-        <label for="e-notes">Anything else? (optional)</label>
+        <div style="margin:20px 0 4px;padding-top:16px;border-top:1px solid var(--line);font-size:13px;font-weight:700;color:#1c2027;">Want a sharper report? <span style="display:block;font-weight:400;color:var(--ink-soft);font-size:12px;margin-top:2px;">Optional — everything below is skippable, the audit still runs without it.</span></div>
+
+        <label for="e-backend-terms">Backend search terms</label>
+        <div class="str-howto" style="background:#f6f6f4;border:1px solid #e5e5e0;border-radius:8px;padding:12px 14px;margin:10px 0;font-size:13px;">
+          <strong style="display:block;margin-bottom:6px;">How to copy your backend search terms</strong>
+          <ol style="margin:0;padding-left:18px;">
+            <li>Seller Central → Catalog → Manage All Listings (or Manage Inventory).</li>
+            <li>Find this product → open the row's dropdown → Edit.</li>
+            <li>Click the "More details" tab (some accounts label it "Keywords").</li>
+            <li>Copy everything in the "Search terms" field and paste it below.</li>
+          </ol>
+        </div>
+        <textarea id="e-backend-terms" placeholder="Paste your backend search terms here (optional)"></textarea>
+
+        <label>Business Report</label>
+        <div class="str-howto" style="background:#f6f6f4;border:1px solid #e5e5e0;border-radius:8px;padding:12px 14px;margin:10px 0;font-size:13px;">
+          <strong style="display:block;margin-bottom:6px;">How to pull your Business Report</strong>
+          <ol style="margin:0;padding-left:18px;">
+            <li>Seller Central → Reports → Business Reports.</li>
+            <li>Left sidebar, under "By ASIN" → Detail Page Sales and Traffic.</li>
+            <li>Set the date range (top right) to the last 30 days.</li>
+            <li>Click Download → choose .csv.</li>
+            <li>Email the file to contact@arli.arligusa.com with your order number in the subject line.</li>
+          </ol>
+        </div>
+        <label><input type="checkbox" id="e-biz-report-check" style="width:auto;display:inline-block;margin-right:6px;">I'll send my Business Report to contact@arli.arligusa.com</label>
+
+        <label for="e-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
         <textarea id="e-notes"></textarea>
 
         <div id="e-err" class="err"></div>
@@ -160,6 +187,8 @@
       document.getElementById('e-str-check').checked = !!s.str_provided;
       document.getElementById('e-str-note').value = s.str_note || '';
       document.getElementById('e-notes').value = s.notes || '';
+      document.getElementById('e-backend-terms').value = s.backend_terms || '';
+      document.getElementById('e-biz-report-check').checked = !!s.biz_report_provided;
       var radios = document.querySelectorAll('input[name=e-audit-type]');
       for (var i = 0; i < radios.length; i++) {
         radios[i].checked = radios[i].value === s.audit_type;
@@ -191,6 +220,8 @@
       str_provided: document.getElementById('e-str-check').checked,
       str_note: document.getElementById('e-str-note').value.trim(),
       notes: document.getElementById('e-notes').value.trim(),
+      backend_terms: document.getElementById('e-backend-terms').value.trim(),
+      biz_report_provided: document.getElementById('e-biz-report-check').checked,
     };
 
     var btn = form.querySelector('button[type=submit]');

@@ -10,6 +10,8 @@ function sanitize(row) {
     str_provided: !!row.str_provided,
     str_note: row.str_note || '',
     notes: row.notes || '',
+    backend_terms: row.backend_terms || '',
+    biz_report_provided: !!row.biz_report_provided,
     prescan_status: row.prescan_status,
     prescan_result: row.prescan_result ? JSON.parse(row.prescan_result) : null,
     fulfillment_status: row.fulfillment_status,
@@ -75,6 +77,8 @@ export async function onRequestPost(context) {
   const strProvided = body.str_provided !== undefined ? !!body.str_provided : !!row.str_provided;
   const strNote = body.str_note !== undefined ? String(body.str_note).trim().slice(0, 500) : row.str_note;
   const notes = body.notes !== undefined ? String(body.notes).trim().slice(0, 1000) : row.notes;
+  const backendTerms = body.backend_terms !== undefined ? String(body.backend_terms).trim().slice(0, 1000) : row.backend_terms;
+  const bizReportProvided = body.biz_report_provided !== undefined ? !!body.biz_report_provided : !!row.biz_report_provided;
 
   if (['ppc', 'both'].includes(auditType) && !strProvided) {
     return json(
@@ -95,6 +99,7 @@ export async function onRequestPost(context) {
   await env.DB.prepare(
     `UPDATE submissions SET
       email = ?, asin_or_url = ?, audit_type = ?, marketplace = ?, str_provided = ?, str_note = ?, notes = ?,
+      backend_terms = ?, biz_report_provided = ?,
       prescan_status = ?, prescan_result = ?, prescan_score = ?, updated_at = ?
      WHERE id = ? AND edit_token = ?`
   )
@@ -106,6 +111,8 @@ export async function onRequestPost(context) {
       strProvided ? 1 : 0,
       strNote,
       notes,
+      backendTerms,
+      bizReportProvided ? 1 : 0,
       prescan.status,
       JSON.stringify(prescan),
       prescan.score ?? null,

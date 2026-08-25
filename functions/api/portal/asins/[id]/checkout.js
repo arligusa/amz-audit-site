@@ -47,15 +47,17 @@ export async function onRequestPost(context) {
   const strProvided = !!body.str_provided;
   const strNote = (body.str_note || '').toString().trim().slice(0, 500);
   const notes = (body.notes || '').toString().trim().slice(0, 1000);
+  const backendTerms = (body.backend_terms || '').toString().trim().slice(0, 1000);
+  const bizReportProvided = !!body.biz_report_provided;
 
   const reportId = crypto.randomUUID();
   const now = new Date().toISOString();
 
   await env.DB.prepare(
-    `INSERT INTO reports (id, asin_id, customer_id, audit_type, status, str_provided, str_note, notes, created_at, updated_at)
-     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?)`
+    `INSERT INTO reports (id, asin_id, customer_id, audit_type, status, str_provided, str_note, notes, backend_terms, biz_report_provided, created_at, updated_at)
+     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?,?,?)`
   )
-    .bind(reportId, asinRow.id, auth.customer.id, auditType, strProvided ? 1 : 0, strNote, notes, now, now)
+    .bind(reportId, asinRow.id, auth.customer.id, auditType, strProvided ? 1 : 0, strNote, notes, backendTerms, bizReportProvided ? 1 : 0, now, now)
     .run();
 
   const productResp = await shopifyGraphql(

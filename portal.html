@@ -118,7 +118,10 @@
         <label><input type="checkbox" id="c-str-check" style="width:auto;display:inline-block;margin-right:6px;">I have my Search Term Report ready to send</label>
         <textarea id="c-str-note" placeholder="Optional — anything about your PPC setup worth knowing"></textarea>
       </div>
-      <label for="c-notes">Anything else? (optional)</label>
+      <label for="c-backend-terms">Backend search terms (optional)</label>
+      <textarea id="c-backend-terms" placeholder="Paste them if you have them handy — Seller Central → Catalog → Manage All Listings → Edit → More details tab → Search terms"></textarea>
+      <label><input type="checkbox" id="c-biz-report-check" style="width:auto;display:inline-block;margin-right:6px;">I'll send my Business Report (Seller Central → Reports → Business Reports → Detail Page Sales and Traffic) to contact@arli.arligusa.com</label>
+      <label for="c-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
       <textarea id="c-notes"></textarea>
       <div id="c-err" class="err"></div>
       <button type="submit" class="btn-primary btn-block" id="c-submit">Proceed to purchase</button>
@@ -283,6 +286,8 @@
         str_provided: document.getElementById('c-str-check').checked,
         str_note: document.getElementById('c-str-note').value.trim(),
         notes: document.getElementById('c-notes').value.trim(),
+        backend_terms: document.getElementById('c-backend-terms').value.trim(),
+        biz_report_provided: document.getElementById('c-biz-report-check').checked,
       }),
     })
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })

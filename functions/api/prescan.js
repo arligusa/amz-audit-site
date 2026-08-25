@@ -17,6 +17,8 @@ export async function onRequestPost(context) {
   const strProvided = !!body.str_provided;
   const strNote = (body.str_note || '').toString().trim().slice(0, 500);
   const notes = (body.notes || '').toString().trim().slice(0, 1000);
+  const backendTerms = (body.backend_terms || '').toString().trim().slice(0, 1000);
+  const bizReportProvided = !!body.biz_report_provided;
 
   if (!isValidEmail(email)) {
     return json({ error: 'Please enter a valid email address.' }, 400);
@@ -57,8 +59,9 @@ export async function onRequestPost(context) {
     await env.DB.prepare(
       `INSERT INTO submissions
         (id, edit_token, email, asin_or_url, audit_type, marketplace, str_provided, str_note, notes,
+         backend_terms, biz_report_provided,
          prescan_status, prescan_result, prescan_score, fulfillment_status, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     )
       .bind(
         id,
@@ -70,6 +73,8 @@ export async function onRequestPost(context) {
         strProvided ? 1 : 0,
         strNote,
         notes,
+        backendTerms,
+        bizReportProvided ? 1 : 0,
         prescan.status,
         JSON.stringify(prescan),
         prescan.score ?? null,

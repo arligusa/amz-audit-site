@@ -216,6 +216,10 @@
   .str-howto ol { margin: 0; padding-left: 18px; }
   .str-howto ol li { margin-bottom: 4px; }
   .str-howto-note { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; }
+  .optional-divider { margin: 20px 0 4px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700; color: #1c2027; }
+  .optional-divider span { display: block; font-weight: 400; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+  .checkbox-label { display: flex !important; align-items: flex-start; gap: 8px; font-weight: 400 !important; }
+  .checkbox-label input { width: auto; margin-top: 3px; }
   .form-err { color: #b42318; font-size: 13px; margin-top: 10px; display: none; text-align: left; }
   .form-err.show { display: block; }
   .btn-block { width: 100%; text-align: center; display: block; border: none; cursor: pointer; }
@@ -395,8 +399,37 @@
             <option value="amazon.com.au">amazon.com.au (Australia)</option>
           </select>
 
-          <label for="in-notes">Anything else we should know? (optional)</label>
-          <textarea id="in-notes"></textarea>
+          <div class="optional-divider">Want a sharper report? <span>Optional — everything below is skippable, the audit still runs without it.</span></div>
+
+          <label for="in-backend-terms">Backend search terms</label>
+          <div class="str-howto">
+            <strong>How to copy your backend search terms</strong>
+            <ol>
+              <li>Seller Central → Catalog → Manage All Listings (or Manage Inventory).</li>
+              <li>Find this product → open the row's dropdown → Edit.</li>
+              <li>Click the "More details" tab (some accounts label it "Keywords").</li>
+              <li>Copy everything in the "Search terms" field and paste it below.</li>
+            </ol>
+            <p class="str-howto-note">This is the single best way to close the biggest gap in a public-only scan — backend terms are invisible from the listing page, so we can only check them if you paste them here.</p>
+          </div>
+          <textarea id="in-backend-terms" placeholder="Paste your backend search terms here (optional)"></textarea>
+
+          <label>Business Report</label>
+          <div class="str-howto">
+            <strong>How to pull your Business Report</strong>
+            <ol>
+              <li>Seller Central → Reports → Business Reports.</li>
+              <li>Left sidebar, under "By ASIN" → Detail Page Sales and Traffic.</li>
+              <li>Set the date range (top right) to the last 30 days.</li>
+              <li>Click Download → choose .csv.</li>
+              <li>Email the file to contact@arli.arligusa.com with your order number in the subject line.</li>
+            </ol>
+            <p class="str-howto-note">Real traffic and conversion data for this exact ASIN — it grounds the findings in your actual numbers instead of estimates from the public page.</p>
+          </div>
+          <label class="checkbox-label"><input type="checkbox" id="in-biz-report-check">I'll send my Business Report to contact@arli.arligusa.com after purchase</label>
+
+          <label for="in-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
+          <textarea id="in-notes" placeholder="Be specific — 'sales dropped after a competitor undercut my price' tells us where to dig first."></textarea>
 
           <div id="intake-err" class="form-err"></div>
 
@@ -478,6 +511,8 @@
       str_provided: document.getElementById('in-str-check').checked,
       str_note: document.getElementById('in-str-note').value.trim(),
       notes: document.getElementById('in-notes').value.trim(),
+      backend_terms: document.getElementById('in-backend-terms').value.trim(),
+      biz_report_provided: document.getElementById('in-biz-report-check').checked,
     };
 
     form.style.display = 'none';
