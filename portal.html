@@ -51,6 +51,11 @@
   .audit-type-group { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   .audit-type-opt { display: flex; align-items: flex-start; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; font-size: 14px; }
   .audit-type-opt input { margin-top: 3px; width: auto; }
+  .checkbox-label { display: flex !important; align-items: flex-start; gap: 8px; font-weight: 400 !important; }
+  .checkbox-label input { width: auto; margin-top: 3px; }
+  .entitlement-row { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 9px; padding: 14px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .entitlement-main { font-weight: 600; font-size: 14.5px; color: var(--accent); }
+  .entitlement-sub { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
   .err { color: #b42318; font-size: 13.5px; margin-top: 10px; display: none; }
   .err.show { display: block; }
   .empty { color: var(--ink-soft); font-size: 14px; }
@@ -76,9 +81,27 @@
     You're not logged in. <a href="/login.html">Log in</a> to view your portal.
   </div>
 
+  <div id="profile-gate" style="display:none;">
+    <h1>Welcome — let's finish setting up your account</h1>
+    <p class="sub">Just a couple details, then you're in.</p>
+    <div class="card">
+      <form id="profile-form">
+        <label for="p-full-name">Full name</label>
+        <input type="text" id="p-full-name" required>
+        <label for="p-company-name">Company name (optional)</label>
+        <input type="text" id="p-company-name">
+        <label class="checkbox-label"><input type="checkbox" id="p-marketing-opt-in"> Send me product updates and new features (optional)</label>
+        <div id="p-err" class="err"></div>
+        <button type="submit" class="btn-primary btn-block">Continue to my portal</button>
+      </form>
+    </div>
+  </div>
+
   <div id="content" style="display:none;">
     <h1>Your ASINs</h1>
     <p class="sub">Track audit status and add new ASINs for review.</p>
+
+    <div id="entitlements-box" style="display:none;"></div>
 
     <div id="asin-list"></div>
     <div id="asin-empty" class="empty" style="display:none;">No ASINs yet — add your first one below.</div>
@@ -132,15 +155,53 @@
   </div>
 </dialog>
 
+<dialog id="redeem-dialog">
+  <div class="dialog-inner">
+    <h2 id="redeem-title">Assign this audit to an ASIN</h2>
+    <form id="redeem-form">
+      <label for="r-asin">Amazon ASIN or listing URL</label>
+      <input type="text" id="r-asin" required>
+      <label for="r-label">Nickname (optional)</label>
+      <input type="text" id="r-label" placeholder="e.g. Kitchen Sponge 3-pack">
+      <label for="r-marketplace">Marketplace</label>
+      <select id="r-marketplace">
+        <option value="amazon.com">amazon.com (US)</option>
+        <option value="amazon.co.uk">amazon.co.uk (UK)</option>
+        <option value="amazon.ca">amazon.ca (Canada)</option>
+        <option value="amazon.de">amazon.de (Germany)</option>
+        <option value="amazon.com.au">amazon.com.au (Australia)</option>
+      </select>
+      <div id="r-str-wrap" style="display:none;">
+        <label for="r-str-file">Search Term Report (.csv or .xlsx)</label>
+        <input type="file" id="r-str-file" accept=".csv,.xlsx,.xls">
+        <textarea id="r-str-note" placeholder="Optional — anything about your PPC setup worth knowing"></textarea>
+      </div>
+      <label for="r-backend-terms">Backend search terms (optional)</label>
+      <textarea id="r-backend-terms" placeholder="Paste them if you have them handy — Seller Central → Catalog → Manage All Listings → Edit → More details tab → Search terms"></textarea>
+      <label for="r-biz-report-file">Business Report (.csv, optional — Seller Central → Reports → Business Reports → Detail Page Sales and Traffic)</label>
+      <input type="file" id="r-biz-report-file" accept=".csv,.xlsx,.xls">
+      <label for="r-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
+      <textarea id="r-notes"></textarea>
+      <div id="r-err" class="err"></div>
+      <button type="submit" class="btn-primary btn-block" id="r-submit">Start this audit</button>
+      <button type="button" class="btn-secondary btn-block" id="r-cancel" style="margin-top:8px;">Cancel</button>
+    </form>
+  </div>
+</dialog>
+
 <script type="text/javascript">
 (function () {
   var loadingEl = document.getElementById('loading');
   var notfoundEl = document.getElementById('notfound');
+  var profileGateEl = document.getElementById('profile-gate');
+  var profileForm = document.getElementById('profile-form');
+  var profileErr = document.getElementById('p-err');
   var contentEl = document.getElementById('content');
   var accountBox = document.getElementById('account-box');
   var accountEmail = document.getElementById('account-email');
   var listEl = document.getElementById('asin-list');
   var emptyEl = document.getElementById('asin-empty');
+  var entitlementsBox = document.getElementById('entitlements-box');
   var addForm = document.getElementById('add-asin-form');
   var addErr = document.getElementById('a-err');
   var dialog = document.getElementById('checkout-dialog');
@@ -150,6 +211,16 @@
   var checkoutCancel = document.getElementById('c-cancel');
   var strWrap = document.getElementById('c-str-wrap');
   var activeAsinId = null;
+
+  var redeemDialog = document.getElementById('redeem-dialog');
+  var redeemForm = document.getElementById('redeem-form');
+  var redeemErr = document.getElementById('r-err');
+  var redeemSubmit = document.getElementById('r-submit');
+  var redeemCancel = document.getElementById('r-cancel');
+  var redeemStrWrap = document.getElementById('r-str-wrap');
+  var activeEntitlement = null;
+
+  var AUDIT_LABEL = { listing: 'Listing Audit', ppc: 'PPC Audit', both: 'Both (Listing + PPC)' };
 
   var STATUS_LABEL = { awaiting_intake: 'In queue', in_progress: 'In progress', delivered: 'Delivered' };
 
@@ -213,25 +284,148 @@
       });
   }
 
-  fetch('/api/portal/me')
-    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
-    .then(function (res) {
-      if (!res.ok) {
+  function renderEntitlements(entitlements) {
+    if (!entitlements || !entitlements.length) {
+      entitlementsBox.style.display = 'none';
+      entitlementsBox.innerHTML = '';
+      return;
+    }
+    entitlementsBox.style.display = 'block';
+    entitlementsBox.innerHTML = entitlements.map(function (ent) {
+      return '<div class="entitlement-row">' +
+        '<div><div class="entitlement-main">' + escapeHtml(AUDIT_LABEL[ent.audit_type] || ent.audit_type) + ' — ready to assign</div>' +
+        '<div class="entitlement-sub">Paid, not yet tied to an ASIN</div></div>' +
+        '<button class="btn-primary redeem-btn" data-entitlement-id="' + ent.id + '" data-audit-type="' + ent.audit_type + '">Assign to an ASIN</button>' +
+        '</div>';
+    }).join('');
+
+    Array.prototype.forEach.call(entitlementsBox.querySelectorAll('.redeem-btn'), function (btn) {
+      btn.addEventListener('click', function () {
+        activeEntitlement = { id: btn.getAttribute('data-entitlement-id'), audit_type: btn.getAttribute('data-audit-type') };
+        redeemErr.classList.remove('show');
+        redeemSubmit.disabled = false;
+        redeemSubmit.textContent = 'Start this audit';
+        redeemForm.reset();
+        redeemStrWrap.style.display = (activeEntitlement.audit_type === 'ppc' || activeEntitlement.audit_type === 'both') ? 'block' : 'none';
+        document.getElementById('redeem-title').textContent = 'Assign your ' + (AUDIT_LABEL[activeEntitlement.audit_type] || activeEntitlement.audit_type) + ' to an ASIN';
+        redeemDialog.showModal();
+      });
+    });
+  }
+
+  function loadPortal() {
+    return fetch('/api/portal/me')
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          loadingEl.style.display = 'none';
+          notfoundEl.style.display = 'block';
+          return;
+        }
+        accountEmail.textContent = res.data.email;
+        accountBox.style.display = 'flex';
+
+        if (!res.data.profile_complete) {
+          loadingEl.style.display = 'none';
+          profileGateEl.style.display = 'block';
+          return;
+        }
+
+        renderEntitlements(res.data.unredeemed_entitlements || []);
+        return loadAsins().then(function () {
+          loadingEl.style.display = 'none';
+          profileGateEl.style.display = 'none';
+          contentEl.style.display = 'block';
+        });
+      })
+      .catch(function () {
         loadingEl.style.display = 'none';
         notfoundEl.style.display = 'block';
-        return;
-      }
-      accountEmail.textContent = res.data.email;
-      accountBox.style.display = 'flex';
-      return loadAsins().then(function () {
-        loadingEl.style.display = 'none';
-        contentEl.style.display = 'block';
       });
+  }
+
+  loadPortal();
+
+  profileForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    profileErr.classList.remove('show');
+    var btn = profileForm.querySelector('button[type=submit]');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    fetch('/api/portal/me', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        full_name: document.getElementById('p-full-name').value.trim(),
+        company_name: document.getElementById('p-company-name').value.trim(),
+        marketing_opt_in: document.getElementById('p-marketing-opt-in').checked,
+      }),
     })
-    .catch(function () {
-      loadingEl.style.display = 'none';
-      notfoundEl.style.display = 'block';
-    });
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        btn.disabled = false;
+        btn.textContent = 'Continue to my portal';
+        if (!res.ok) {
+          profileErr.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
+          profileErr.classList.add('show');
+          return;
+        }
+        profileGateEl.style.display = 'none';
+        loadingEl.style.display = 'block';
+        loadPortal();
+      })
+      .catch(function () {
+        btn.disabled = false;
+        btn.textContent = 'Continue to my portal';
+        profileErr.textContent = 'Network error — please try again.';
+        profileErr.classList.add('show');
+      });
+  });
+
+  redeemCancel.addEventListener('click', function () { redeemDialog.close(); });
+
+  redeemForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    redeemErr.classList.remove('show');
+    redeemSubmit.disabled = true;
+    redeemSubmit.textContent = 'Starting…';
+
+    var formData = new FormData();
+    formData.set('asin_or_url', document.getElementById('r-asin').value.trim());
+    formData.set('label', document.getElementById('r-label').value.trim());
+    formData.set('marketplace', document.getElementById('r-marketplace').value);
+    formData.set('str_note', document.getElementById('r-str-note').value.trim());
+    formData.set('notes', document.getElementById('r-notes').value.trim());
+    formData.set('backend_terms', document.getElementById('r-backend-terms').value.trim());
+    var strFile = document.getElementById('r-str-file').files[0];
+    if (strFile) formData.set('str_report_file', strFile);
+    var bizFile = document.getElementById('r-biz-report-file').files[0];
+    if (bizFile) formData.set('biz_report_file', bizFile);
+
+    fetch('/api/portal/entitlements/' + encodeURIComponent(activeEntitlement.id) + '/redeem', {
+      method: 'POST',
+      body: formData,
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          redeemSubmit.disabled = false;
+          redeemSubmit.textContent = 'Start this audit';
+          redeemErr.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
+          redeemErr.classList.add('show');
+          return;
+        }
+        redeemDialog.close();
+        loadPortal();
+      })
+      .catch(function () {
+        redeemSubmit.disabled = false;
+        redeemSubmit.textContent = 'Start this audit';
+        redeemErr.textContent = 'Network error — please try again.';
+        redeemErr.classList.add('show');
+      });
+  });
 
   document.getElementById('logout-link').addEventListener('click', function (e) {
     e.preventDefault();

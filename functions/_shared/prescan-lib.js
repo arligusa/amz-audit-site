@@ -13,6 +13,29 @@ export function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// Shopify variant title <-> our internal audit_type. One place so the checkout call
+// sites (homepage, portal) and the order-paid webhook can't drift apart on naming.
+export const AUDIT_LABEL = { listing: 'Listing Audit', ppc: 'PPC Audit', both: 'Both (Listing + PPC)' };
+
+const AUDIT_TYPE_BY_LABEL = Object.fromEntries(Object.entries(AUDIT_LABEL).map(([type, label]) => [label, type]));
+
+export function auditTypeFromVariantTitle(title) {
+  return AUDIT_TYPE_BY_LABEL[title] || null;
+}
+
+// Cart/order custom-attribute keys shared between checkout creation (homepage,
+// portal) and the order-paid webhook that reads them back off the Shopify order.
+export const SHOPIFY_ATTR = {
+  SUBMISSION_ID: 'Submission ID',
+  CUSTOMER_ID: 'Customer ID',
+  ASIN_ID: 'ASIN ID',
+  STR_NOTE: 'Search Term Note',
+  NOTES: 'Notes',
+  BACKEND_TERMS: 'Backend Terms',
+  STR_REPORT_KEY: 'Search Term Report Key',
+  BIZ_REPORT_KEY: 'Business Report Key',
+};
+
 // Pulls a 10-character Amazon ASIN out of a raw ASIN or a full listing URL.
 export function extractAsin(input) {
   if (!input) return null;

@@ -185,24 +185,23 @@ async function sendViaGraph(env, email, subject, text) {
   }
 }
 
-// Sends the magic link email via Microsoft Graph (Exchange Online) once the
-// MS_GRAPH_* vars/secret are configured; until then logs the link so it can be
-// pulled from Cloudflare logs during development/QA. Never throws back to the
-// caller — request-link.js's response is intentionally generic either way, so a
-// delivery failure here shouldn't surface as a different-looking error to the visitor.
-export async function sendMagicLinkEmail(env, email, verifyUrl) {
-  const subject = 'Your Arli Audits login link';
-  const text = `Click below to log in to your Arli Audits account. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can ignore this email.`;
-
+// Sends via Microsoft Graph (Exchange Online) once the MS_GRAPH_* vars/secret are
+// configured; until then logs the content so it can be pulled from Cloudflare logs
+// during development/QA. Never throws back to the caller — every caller here treats
+// email delivery as best-effort, so a failure shouldn't surface as a different-looking
+// error to the visitor (magic links) or block a webhook from finishing (order/free-scan
+// emails). `logLabel` is just what shows up in the stub/error log line, e.g. the
+// recipient-specific content a caller wants visible for debugging.
+export async function sendPlainEmail(env, email, subject, text, logLabel) {
   if (!env.MS_GRAPH_TENANT_ID || !env.MS_GRAPH_CLIENT_ID || !env.MS_GRAPH_CLIENT_CERT_KEY || !env.MS_GRAPH_SENDER) {
-    console.log(`[stub email] magic link for ${email}: ${verifyUrl}`);
+    console.log(`[stub email] ${logLabel || subject} for ${email}`);
     return;
   }
 
   try {
     await sendViaGraph(env, email, subject, text);
   } catch (e) {
-    console.log(`[email send failed, logging link instead] ${email}: ${verifyUrl} — ${e.name}: ${e.message}`);
+    console.log(`[email send failed] ${logLabel || subject} for ${email} — ${e.name}: ${e.message}`);
     // Cloudflare's dashboard doesn't surface Pages Functions console logs for this
     // project, so mirror the failure into D1 as a queryable fallback (temporary,
     // for diagnosing the Graph API rollout — not a permanent audit table).
@@ -218,4 +217,36 @@ export async function sendMagicLinkEmail(env, email, verifyUrl) {
       }
     }
   }
+}
+
+// Sends the magic link email. Thin wrapper over sendPlainEmail — kept as its own
+// function since every caller of the login flow wants this exact copy.
+export async function sendMagicLinkEmail(env, email, verifyUrl) {
+  const subject = 'Your Arli Audits login link';
+  const text = `Click below to log in to your Arli Audits account. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl}\n\nIf you didn't request this, you can ignore this email.`;
+  await sendPlainEmail(env, email, subject, text, `magic link (${verifyUrl})`);
+}
+
+// Verifies a Shopify webhook delivery: HMAC-SHA256 over the RAW request body,
+// base64-encoded, compared against the X-Shopify-Hmac-Sha256 header. Must run on the
+// untouched body text — parsing/re-serializing JSON first would change the byte
+// sequence HMAC was computed over and break verification. Constant-time compare so
+// timing doesn't leak how much of the signature matched.
+export async function verifyShopifyWebhookHmac(env, rawBody, hmacHeader) {
+  if (!env.SHOPIFY_WEBHOOK_SECRET || !hmacHeader) return false;
+
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(env.SHOPIFY_WEBHOOK_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(rawBody));
+  const computed = btoa(String.fromCharCode(...new Uint8Array(signature)));
+
+  if (computed.length !== hmacHeader.length) return false;
+  let diff = 0;
+  for (let i = 0; i < computed.length; i++) diff |= computed.charCodeAt(i) ^ hmacHeader.charCodeAt(i);
+  return diff === 0;
 }

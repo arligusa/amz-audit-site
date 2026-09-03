@@ -218,6 +218,20 @@
   .str-howto-note { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; }
   .optional-divider { margin: 20px 0 4px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700; color: #1c2027; }
   .optional-divider span { display: block; font-weight: 400; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+  .field-note { margin: -10px 0 0; font-size: 12px; color: var(--ink-soft); }
+  #free-scan-box {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 12px;
+    padding: 22px 24px; max-width: 420px; margin: 20px auto 0; text-align: left;
+  }
+  #free-scan-box h3 { color: #fff; font-size: 16px; margin: 0 0 4px; }
+  #free-scan-box .free-scan-sub { color: #c7ccd6; font-size: 13px; margin: 0 0 4px; }
+  #free-scan-box label { color: #fff; }
+  #free-scan-box input, #free-scan-box select {
+    width: 100%; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.2); border-radius: 7px;
+    font-size: 14.5px; font-family: inherit; color: var(--ink); background: #fff;
+  }
+  #free-scan-box .btn-secondary { background: #fff; }
+  .free-scan-sent { color: #fff; font-size: 14px; text-align: center; padding: 8px 0; }
   .intake-form input[type="file"] {
     width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
     font-size: 13.5px; font-family: inherit; color: var(--ink); background: #fff;
@@ -226,16 +240,6 @@
   .form-err.show { display: block; }
   .btn-block { width: 100%; text-align: center; display: block; border: none; cursor: pointer; }
   .prescan-loading { text-align: center; padding: 20px 0; color: var(--ink-soft); font-size: 14px; }
-  .prescan-score { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
-  .prescan-categories { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 6px; }
-  .prescan-categories li { display: flex; align-items: center; gap: 9px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-  .prescan-categories li:last-child { border-bottom: none; }
-  .prescan-categories .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  .prescan-categories .cat-green .dot { background: var(--accent); }
-  .prescan-categories .cat-red .dot { background: #b42318; }
-  .prescan-fallback { font-size: 13.5px; color: var(--ink-soft); background: var(--paper-soft); border-radius: 8px; padding: 12px 14px; margin-bottom: 14px; }
-  .edit-link-box { font-size: 12px; color: #8a91a3; margin-top: 14px; word-break: break-all; }
-  .edit-link-box a { color: #8a91a3; }
   @media (max-width: 600px) {
     .hero h1 { font-size: 30px; }
     header.top a.cta-mini { display: none; }
@@ -355,13 +359,14 @@
   <div class="wrap">
     <div class="final-cta">
       <h2>Ready to get started?</h2>
-      <p>Answer a few quick questions and we'll run a free instant pre-scan of your listing — no payment required — so you know we can help before you pay anything. Pre-launch pricing ends once our audit program goes live — lock in $49 while it's here.</p>
+      <p>Pick a package below and we'll get to work — or run a free scan first if you want a quick read before you buy. Pre-launch pricing ends once our audit program goes live — lock in $49 while it's here.</p>
 
       <div id="buy-box" style="background:#fff;border-radius:12px;padding:24px;max-width:420px;margin:0 auto;text-align:left;">
 
         <form id="intake-form" class="intake-form">
           <label for="in-email">Email</label>
           <input type="email" id="in-email" required placeholder="you@yourbrand.com">
+          <p class="field-note">This is where your order confirmation and account setup link go — after you purchase, you'll create a login to track your report.</p>
 
           <label for="in-asin">Amazon ASIN or listing URL</label>
           <input type="text" id="in-asin" required placeholder="B0XXXXXXXX or https://www.amazon.com/dp/...">
@@ -437,13 +442,33 @@
 
           <div id="intake-err" class="form-err"></div>
 
-          <button type="submit" class="btn-primary btn-block" style="margin-top:16px;">Run my free pre-scan</button>
+          <button type="submit" class="btn-primary btn-block" id="package-submit-btn" style="margin-top:16px;">Proceed to purchase — $49</button>
         </form>
 
-        <div id="prescan-loading" class="prescan-loading" style="display:none;">Scanning your listing — usually under 15 seconds…</div>
+        <div id="package-loading" class="prescan-loading" style="display:none;">Preparing your order…</div>
 
-        <div id="prescan-result" style="display:none;"></div>
+      </div>
 
+      <div id="free-scan-box">
+        <h3>Just want a quick read first?</h3>
+        <p class="free-scan-sub">One scan per ASIN — we'll email you an overall health read, no account or payment needed.</p>
+        <form id="free-scan-form" class="intake-form">
+          <label for="fs-email">Email</label>
+          <input type="email" id="fs-email" required placeholder="you@yourbrand.com">
+          <label for="fs-asin">Amazon ASIN or listing URL</label>
+          <input type="text" id="fs-asin" required placeholder="B0XXXXXXXX or https://www.amazon.com/dp/...">
+          <label for="fs-marketplace">Marketplace</label>
+          <select id="fs-marketplace">
+            <option value="amazon.com" selected>amazon.com (US)</option>
+            <option value="amazon.co.uk">amazon.co.uk (UK)</option>
+            <option value="amazon.ca">amazon.ca (Canada)</option>
+            <option value="amazon.de">amazon.de (Germany)</option>
+            <option value="amazon.com.au">amazon.com.au (Australia)</option>
+          </select>
+          <div id="free-scan-err" class="form-err"></div>
+          <button type="submit" class="btn-secondary btn-block" id="free-scan-btn" style="margin-top:16px;">Run my free scan</button>
+        </form>
+        <div id="free-scan-sent" class="free-scan-sent" style="display:none;">Check your email — your free scan result is on its way.</div>
       </div>
 
       <p style="margin: 16px 0 0; font-size: 13.5px;"><a href="mailto:contact@arli.arligusa.com?subject=Amazon%20Audit%20-%20Question&body=" style="color: #c7ccd6;">Questions first? Email us</a></p>
@@ -481,27 +506,27 @@
 
   var form = document.getElementById('intake-form');
   var strWrap = document.getElementById('str-note-wrap');
-  var loadingEl = document.getElementById('prescan-loading');
-  var resultEl = document.getElementById('prescan-result');
+  var loadingEl = document.getElementById('package-loading');
   var errEl = document.getElementById('intake-err');
-  var lastSubmission = null;
+  var submitBtn = document.getElementById('package-submit-btn');
 
-  function updateStrVisibility() {
+  function updateAuditTypeUi() {
     var checked = form.querySelector('input[name=audit_type]:checked');
     var val = checked ? checked.value : 'listing';
     strWrap.classList.toggle('show', val === 'ppc' || val === 'both');
+    submitBtn.textContent = 'Proceed to purchase — ' + AUDIT_PRICE[val];
   }
   Array.prototype.forEach.call(form.querySelectorAll('input[name=audit_type]'), function (r) {
-    r.addEventListener('change', updateStrVisibility);
+    r.addEventListener('change', updateAuditTypeUi);
   });
-  updateStrVisibility();
+  updateAuditTypeUi();
 
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-
+  // Buying a package goes straight from filled-out form to Shopify checkout — no
+  // live pre-scan preview step. That's the free scan's job now (see the separate
+  // free-scan form below); a visitor who's already decided to buy doesn't need to
+  // see it. The intake data (ASIN, files, notes) still gets saved as a `submissions`
+  // row first, tagged onto the Shopify order so the order-paid webhook can turn it
+  // into a real account + report once payment confirms.
   form.addEventListener('submit', function (e) {
     e.preventDefault();
     errEl.classList.remove('show');
@@ -532,15 +557,14 @@
     })
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (res) {
-        loadingEl.style.display = 'none';
         if (!res.ok) {
+          loadingEl.style.display = 'none';
           form.style.display = 'block';
           errEl.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
           errEl.classList.add('show');
           return;
         }
-        lastSubmission = { id: res.data.id, edit_token: res.data.edit_token, asin: res.data.asin, audit_type: auditType, email: email };
-        renderResult(res.data.prescan, auditType, res.data.asin, res.data.id, res.data.edit_token);
+        proceedToPurchase({ id: res.data.id, edit_token: res.data.edit_token, asin: res.data.asin, audit_type: auditType, email: email });
       })
       .catch(function () {
         loadingEl.style.display = 'none';
@@ -550,45 +574,11 @@
       });
   });
 
-  function renderResult(prescan, auditType, asin, id, token) {
-    var editUrl = window.location.origin + '/edit.html?id=' + encodeURIComponent(id) + '&token=' + encodeURIComponent(token);
-    var html = '';
-
-    if (prescan.status === 'ok' && prescan.categories && prescan.categories.length) {
-      html += '<div class="prescan-score">Quick pre-scan of ' + escapeHtml(asin) + '</div>';
-      html += '<ul class="prescan-categories">';
-      prescan.categories.forEach(function (c) {
-        html += '<li class="cat-' + c.status + '"><span class="dot"></span>' + escapeHtml(c.label) + '</li>';
-      });
-      html += '</ul>';
-      html += '<p style="font-size:12.5px;color:var(--ink-soft);margin:-2px 0 16px;">This is a quick structural check — the paid audit goes far deeper, with specific findings and a prioritized fix list tied to your real data.</p>';
-    } else {
-      html += '<div class="prescan-fallback">We couldn’t run an automated pre-scan on this listing right now (Amazon limits automated checks sometimes) — no problem, this doesn’t affect your audit. We’ll do the full manual review either way, within 48 hours of purchase.</div>';
-    }
-
-    html += '<button id="proceed-btn" class="btn-primary btn-block" type="button">Proceed to purchase — ' + AUDIT_PRICE[auditType] + '</button>';
-    html += '<button id="edit-again-btn" class="btn-secondary btn-block" type="button" style="margin-top:8px;">Change my details</button>';
-    html += '<div class="edit-link-box">Want to come back later? Save this link to change your details anytime before we start: <a href="' + editUrl + '">' + editUrl + '</a></div>';
-
-    resultEl.innerHTML = html;
-    resultEl.style.display = 'block';
-
-    document.getElementById('edit-again-btn').addEventListener('click', function () {
-      resultEl.style.display = 'none';
-      form.style.display = 'block';
-    });
-    document.getElementById('proceed-btn').addEventListener('click', proceedToPurchase);
-  }
-
-  function proceedToPurchase() {
-    var btn = document.getElementById('proceed-btn');
-    btn.disabled = true;
-    btn.textContent = 'Redirecting to checkout…';
-
+  function proceedToPurchase(submission) {
     loadScript(function () {
       var client = getClient();
       client.product.fetch('gid://shopify/Product/15863583179038').then(function (product) {
-        var targetTitle = AUDIT_LABEL[lastSubmission.audit_type];
+        var targetTitle = AUDIT_LABEL[submission.audit_type];
         var variant = null;
         for (var i = 0; i < product.variants.length; i++) {
           if (product.variants[i].title === targetTitle) { variant = product.variants[i]; break; }
@@ -597,24 +587,67 @@
 
         return client.checkout.create({
           lineItems: [{ variantId: variant.id, quantity: 1 }],
-          note: 'Pre-scan submission ' + lastSubmission.id + ' — edit link: ' + window.location.origin + '/edit.html?id=' + lastSubmission.id + '&token=' + lastSubmission.edit_token,
+          note: 'Pre-scan submission ' + submission.id + ' — edit link: ' + window.location.origin + '/edit.html?id=' + submission.id + '&token=' + submission.edit_token,
           customAttributes: [
-            { key: 'Submission ID', value: lastSubmission.id },
-            { key: 'ASIN', value: lastSubmission.asin },
+            { key: 'Submission ID', value: submission.id },
+            { key: 'ASIN', value: submission.asin },
             { key: 'Audit Type', value: targetTitle },
-            { key: 'Pre-scan Email', value: lastSubmission.email },
+            { key: 'Pre-scan Email', value: submission.email },
           ],
         });
       }).then(function (checkout) {
         window.location.href = checkout.webUrl;
       }).catch(function () {
-        btn.disabled = false;
-        btn.textContent = 'Proceed to purchase — ' + AUDIT_PRICE[lastSubmission.audit_type];
+        loadingEl.style.display = 'none';
+        form.style.display = 'block';
         errEl.textContent = 'Could not start checkout — please try again, or email contact@arli.arligusa.com.';
         errEl.classList.add('show');
       });
     });
   }
+
+  // Free scan: a completely separate, lighter-weight path — no account, no files,
+  // result emailed rather than shown live. Gated server-side to one claim per ASIN.
+  var freeScanForm = document.getElementById('free-scan-form');
+  var freeScanErr = document.getElementById('free-scan-err');
+  var freeScanBtn = document.getElementById('free-scan-btn');
+  var freeScanSent = document.getElementById('free-scan-sent');
+
+  freeScanForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    freeScanErr.classList.remove('show');
+    freeScanErr.textContent = '';
+    freeScanBtn.disabled = true;
+    freeScanBtn.textContent = 'Running your scan…';
+
+    fetch('/api/free-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('fs-email').value.trim(),
+        asin_or_url: document.getElementById('fs-asin').value.trim(),
+        marketplace: document.getElementById('fs-marketplace').value,
+      }),
+    })
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          freeScanBtn.disabled = false;
+          freeScanBtn.textContent = 'Run my free scan';
+          freeScanErr.textContent = res.data && res.data.error ? res.data.error : 'Something went wrong — please try again.';
+          freeScanErr.classList.add('show');
+          return;
+        }
+        freeScanForm.style.display = 'none';
+        freeScanSent.style.display = 'block';
+      })
+      .catch(function () {
+        freeScanBtn.disabled = false;
+        freeScanBtn.textContent = 'Run my free scan';
+        freeScanErr.textContent = 'Network error — please try again.';
+        freeScanErr.classList.add('show');
+      });
+  });
 })();
 /*]]>*/
 </script>

@@ -123,7 +123,7 @@ export async function onRequestPost(context) {
   return new Response(null, {
     status: 302,
     headers: {
-      Location: new URL('/portal.html', url).toString(),
+      Location: new URL('/portal', url).toString(),
       'Set-Cookie': sessionCookieHeader(sessionToken, expiresAt),
     },
   });

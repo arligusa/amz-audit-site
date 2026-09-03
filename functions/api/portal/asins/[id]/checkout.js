@@ -1,4 +1,4 @@
-import { json } from '../../../../_shared/prescan-lib.js';
+import { json, AUDIT_LABEL, SHOPIFY_ATTR } from '../../../../_shared/prescan-lib.js';
 import { requireSession, unauthorized } from '../../../../_shared/auth-lib.js';
 import { validateUpload, uploadKey } from '../../../../_shared/upload-lib.js';
 
@@ -9,8 +9,6 @@ const SHOPIFY_DOMAIN = 'arlig.myshopify.com';
 const STOREFRONT_TOKEN = 'a6836f04aad6ac9499f609bc9df6110d';
 const PRODUCT_GID = 'gid://shopify/Product/15863583179038';
 const API_VERSION = '2024-10';
-
-const AUDIT_LABEL = { listing: 'Listing Audit', ppc: 'PPC Audit', both: 'Both (Listing + PPC)' };
 
 async function shopifyGraphql(query, variables) {
   const resp = await fetch(`https://${SHOPIFY_DOMAIN}/api/${API_VERSION}/graphql.json`, {
@@ -70,20 +68,22 @@ export async function onRequestPost(context) {
     if (bizReportValidation.error) return json({ error: bizReportValidation.error }, 400);
   }
 
-  const reportId = crypto.randomUUID();
-  const now = new Date().toISOString();
-
+  // Files upload immediately — harmless even if the cart is abandoned. The `reports`
+  // row itself is NOT created here: it's created by the Shopify order-paid webhook
+  // once payment actually confirms, keyed off the Customer ID/ASIN ID cart attributes
+  // below. Creating it eagerly (the old behavior) left a phantom "awaiting_intake"
+  // report behind for every abandoned checkout.
   let strReportKey = null;
   let bizReportKey = null;
   try {
     if (strReportValidation) {
-      strReportKey = uploadKey('reports', reportId, 'str_report', strReportValidation.ext);
+      strReportKey = uploadKey('reports-pending', asinRow.id, 'str_report', strReportValidation.ext);
       await env.UPLOADS_BUCKET.put(strReportKey, strReportFile.stream(), {
         httpMetadata: { contentType: strReportFile.type || 'application/octet-stream' },
       });
     }
     if (bizReportValidation) {
-      bizReportKey = uploadKey('reports', reportId, 'biz_report', bizReportValidation.ext);
+      bizReportKey = uploadKey('reports-pending', asinRow.id, 'biz_report', bizReportValidation.ext);
       await env.UPLOADS_BUCKET.put(bizReportKey, bizReportFile.stream(), {
         httpMetadata: { contentType: bizReportFile.type || 'application/octet-stream' },
       });
@@ -91,27 +91,6 @@ export async function onRequestPost(context) {
   } catch (e) {
     return json({ error: 'Something went wrong uploading your file. Please try again in a moment.' }, 500);
   }
-
-  await env.DB.prepare(
-    `INSERT INTO reports (id, asin_id, customer_id, audit_type, status, str_provided, str_note, notes, backend_terms, biz_report_provided, str_report_r2_key, biz_report_r2_key, created_at, updated_at)
-     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?,?,?,?,?)`
-  )
-    .bind(
-      reportId,
-      asinRow.id,
-      auth.customer.id,
-      auditType,
-      strReportKey ? 1 : 0,
-      strNote,
-      notes,
-      backendTerms,
-      bizReportKey ? 1 : 0,
-      strReportKey,
-      bizReportKey,
-      now,
-      now
-    )
-    .run();
 
   const productResp = await shopifyGraphql(
     `query($id: ID!) { product(id: $id) { variants(first: 10) { edges { node { id title } } } } }`,
@@ -130,6 +109,8 @@ export async function onRequestPost(context) {
   // recent Storefront API versions — cartCreate + cart.checkoutUrl is the replacement.
   // Cart-level `attributes`/`note` are the equivalent of the old checkout-level
   // customAttributes/note (still not per-line-item, same reasoning as the homepage flow).
+  // These attribute keys are shared with functions/api/webhooks/shopify-order-paid.js
+  // (SHOPIFY_ATTR in prescan-lib.js) — the webhook reads them back off the paid order.
   const cartResp = await shopifyGraphql(
     `mutation($input: CartInput!) {
       cartCreate(input: $input) {
@@ -140,14 +121,18 @@ export async function onRequestPost(context) {
     {
       input: {
         lines: [{ merchandiseId: variant.node.id, quantity: 1 }],
-        note: `Portal order — report ${reportId}, ASIN ${asinRow.asin}`,
+        note: `Portal order — ASIN ${asinRow.asin}`,
         attributes: [
-          { key: 'Customer ID', value: auth.customer.id },
-          { key: 'ASIN ID', value: asinRow.id },
-          { key: 'Report ID', value: reportId },
+          { key: SHOPIFY_ATTR.CUSTOMER_ID, value: auth.customer.id },
+          { key: SHOPIFY_ATTR.ASIN_ID, value: asinRow.id },
           { key: 'ASIN', value: asinRow.asin },
           { key: 'Audit Type', value: targetTitle },
           { key: 'Customer Email', value: auth.customer.email },
+          { key: SHOPIFY_ATTR.STR_NOTE, value: strNote },
+          { key: SHOPIFY_ATTR.NOTES, value: notes },
+          { key: SHOPIFY_ATTR.BACKEND_TERMS, value: backendTerms },
+          { key: SHOPIFY_ATTR.STR_REPORT_KEY, value: strReportKey || '' },
+          { key: SHOPIFY_ATTR.BIZ_REPORT_KEY, value: bizReportKey || '' },
         ],
       },
     }
@@ -159,5 +144,5 @@ export async function onRequestPost(context) {
     return json({ error: 'Could not start checkout — please try again, or email contact@arli.arligusa.com.' }, 502);
   }
 
-  return json({ checkoutUrl: cart.checkoutUrl, report_id: reportId });
+  return json({ checkoutUrl: cart.checkoutUrl });
 }

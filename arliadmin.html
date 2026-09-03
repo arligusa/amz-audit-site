@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Arli Audits</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+  :root {
+    --ink: #16181d;
+    --ink-soft: #4b5160;
+    --line: #e6e8ec;
+    --paper: #ffffff;
+    --paper-soft: #f7f8fa;
+    --accent: #0f6b5c;
+    --accent-soft: #e7f4f1;
+    --warn: #b45309;
+    --warn-soft: #fff4e5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper-soft); color: var(--ink); line-height: 1.5; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 20px 64px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .brand { font-weight: 700; font-size: 17px; }
+  .brand span { color: var(--accent); }
+  nav.tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+  nav.tabs button { background: none; border: 1px solid var(--line); border-radius: 7px; padding: 8px 14px; font-size: 13.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+  nav.tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 12px; }
+  p.sub { color: var(--ink-soft); font-size: 13.5px; margin: 0 0 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  .status-pill { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .status-delivered { background: var(--accent-soft); color: var(--accent); }
+  .status-in_progress, .status-awaiting_intake { background: var(--warn-soft); color: var(--warn); }
+  .btn-primary, .btn-secondary { border: none; padding: 7px 12px; border-radius: 6px; font-weight: 600; font-size: 12.5px; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  input[type=text], input[type=email], input[type=date], select, textarea {
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13.5px; font-family: inherit; width: 100%;
+  }
+  label { display: block; font-size: 12px; font-weight: 600; margin: 10px 0 4px; color: #1c2027; }
+  .search-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .search-row input { flex: 1; }
+  .empty, .loading { color: var(--ink-soft); font-size: 13.5px; padding: 14px 0; }
+  .err { color: #b42318; font-size: 13px; margin-top: 8px; display: none; }
+  .err.show { display: block; }
+  .badge-comp { font-size: 11px; color: var(--warn); }
+  a.back-link { font-size: 13px; color: var(--accent); text-decoration: none; }
+  dialog { border: none; border-radius: 12px; padding: 0; max-width: 420px; width: calc(100% - 40px); }
+  dialog::backdrop { background: rgba(15, 17, 21, 0.45); }
+  .dialog-inner { padding: 20px; }
+  .timeline-section { margin-top: 16px; }
+  .timeline-section h3 { font-size: 13px; margin: 0 0 8px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.03em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">Arli <span>Admin</span></div>
+  </header>
+
+  <div id="unauthorized" style="display:none;" class="card">
+    Not authorized to view this page.
+  </div>
+
+  <div id="app" style="display:none;">
+    <nav class="tabs">
+      <button id="tab-queue" class="active">Queue</button>
+      <button id="tab-customers">Customers</button>
+    </nav>
+
+    <div id="view-queue">
+      <div id="unredeemed-card" class="card" style="display:none;">
+        <h2>Unredeemed entitlements</h2>
+        <p class="sub">Paid, not yet assigned to an ASIN — the customer hasn't logged in and redeemed it yet.</p>
+        <table>
+          <thead><tr><th>Customer</th><th>Audit</th><th>Purchased</th></tr></thead>
+          <tbody id="unredeemed-body"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>Fulfillment queue</h2>
+        <p class="sub">Every report, most recent first.</p>
+        <table>
+          <thead><tr><th>Customer</th><th>ASIN</th><th>Audit</th><th>Status</th><th>Intake</th><th>Created</th><th></th></tr></thead>
+          <tbody id="queue-body"></tbody>
+        </table>
+        <div id="queue-empty" class="empty" style="display:none;">Nothing in the queue yet.</div>
+      </div>
+
+      <div class="card">
+        <h2>Recent free scans</h2>
+        <table>
+          <thead><tr><th>Email</th><th>ASIN</th><th>Marketplace</th><th>When</th></tr></thead>
+          <tbody id="free-scan-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="view-customers" style="display:none;">
+      <div class="card">
+        <h2>Find a customer</h2>
+        <div class="search-row">
+          <input type="text" id="customer-search-input" placeholder="Email, name, ASIN, or Shopify order id">
+          <button class="btn-primary" id="customer-search-btn">Search</button>
+        </div>
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Customer since</th><th></th></tr></thead>
+          <tbody id="customer-search-body"></tbody>
+        </table>
+        <div id="customer-search-empty" class="empty">Search above to find a customer.</div>
+      </div>
+
+      <div id="customer-detail" class="card" style="display:none;">
+        <a href="#" id="customer-detail-back" class="back-link">&larr; Back to search</a>
+        <h1 id="customer-detail-name" style="margin-top:10px;"></h1>
+        <p class="sub" id="customer-detail-sub"></p>
+
+        <button class="btn-primary" id="grant-btn">Comp an audit</button>
+
+        <div class="timeline-section">
+          <h3>ASINs</h3>
+          <table>
+            <thead><tr><th>ASIN</th><th>Marketplace</th><th>Subscription</th><th></th></tr></thead>
+            <tbody id="detail-asins-body"></tbody>
+          </table>
+        </div>
+
+        <div class="timeline-section">
+          <h3>Reports</h3>
+          <table>
+            <thead><tr><th>ASIN</th><th>Audit</th><th>Status</th><th>Created</th><th>Delivered</th></tr></thead>
+            <tbody id="detail-reports-body"></tbody>
+          </table>
+        </div>
+
+        <div class="timeline-section">
+          <h3>Entitlements</h3>
+          <table>
+            <thead><tr><th>Audit</th><th>Source</th><th>Status</th><th>Created</th></tr></thead>
+            <tbody id="detail-entitlements-body"></tbody>
+          </table>
+        </div>
+
+        <div class="timeline-section">
+          <h3>Free scans (by email)</h3>
+          <table>
+            <thead><tr><th>ASIN</th><th>Marketplace</th><th>When</th></tr></thead>
+            <tbody id="detail-freescans-body"></tbody>
+          </table>
+        </div>
+
+        <div class="timeline-section">
+          <h3>Admin actions</h3>
+          <table>
+            <thead><tr><th>Admin</th><th>Action</th><th>Reason</th><th>When</th></tr></thead>
+            <tbody id="detail-actions-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<dialog id="deliver-dialog">
+  <div class="dialog-inner">
+    <h2>Deliver report</h2>
+    <form id="deliver-form">
+      <label for="deliver-file">Finished report (.pdf)</label>
+      <input type="file" id="deliver-file" accept=".pdf" required>
+      <div id="deliver-err" class="err"></div>
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:14px;">Mark delivered</button>
+      <button type="button" class="btn-secondary" id="deliver-cancel" style="width:100%;margin-top:8px;">Cancel</button>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="grant-dialog">
+  <div class="dialog-inner">
+    <h2>Comp an audit</h2>
+    <form id="grant-form">
+      <label for="grant-audit-type">Audit type</label>
+      <select id="grant-audit-type">
+        <option value="listing">Listing Audit</option>
+        <option value="ppc">PPC Audit</option>
+        <option value="both">Both</option>
+      </select>
+      <label for="grant-reason">Reason (required)</label>
+      <textarea id="grant-reason" required></textarea>
+      <div id="grant-err" class="err"></div>
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:14px;">Grant entitlement</button>
+      <button type="button" class="btn-secondary" id="grant-cancel" style="width:100%;margin-top:8px;">Cancel</button>
+    </form>
+  </div>
+</dialog>
+
+<dialog id="extend-dialog">
+  <div class="dialog-inner">
+    <h2>Extend subscription</h2>
+    <form id="extend-form">
+      <label for="extend-until">Active until</label>
+      <input type="date" id="extend-until" required>
+      <label for="extend-reason">Reason (required)</label>
+      <textarea id="extend-reason" required></textarea>
+      <div id="extend-err" class="err"></div>
+      <button type="submit" class="btn-primary" style="width:100%;margin-top:14px;">Save</button>
+      <button type="button" class="btn-secondary" id="extend-cancel" style="width:100%;margin-top:8px;">Cancel</button>
+    </form>
+  </div>
+</dialog>
+
+<script type="text/javascript">
+(function () {
+  var AUDIT_LABEL = { listing: 'Listing Audit', ppc: 'PPC Audit', both: 'Both (Listing + PPC)' };
+  var STATUS_LABEL = { awaiting_intake: 'Awaiting intake', in_progress: 'In progress', delivered: 'Delivered' };
+
+  var appEl = document.getElementById('app');
+  var unauthorizedEl = document.getElementById('unauthorized');
+  var tabQueue = document.getElementById('tab-queue');
+  var tabCustomers = document.getElementById('tab-customers');
+  var viewQueue = document.getElementById('view-queue');
+  var viewCustomers = document.getElementById('view-customers');
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString() + ' ' + new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  function fetchJson(url, opts) {
+    return fetch(url, opts).then(function (r) { return r.json().then(function (data) { return { ok: r.ok, status: r.status, data: data }; }); });
+  }
+
+  function showTab(name) {
+    tabQueue.classList.toggle('active', name === 'queue');
+    tabCustomers.classList.toggle('active', name === 'customers');
+    viewQueue.style.display = name === 'queue' ? 'block' : 'none';
+    viewCustomers.style.display = name === 'customers' ? 'block' : 'none';
+  }
+  tabQueue.addEventListener('click', function () { showTab('queue'); });
+  tabCustomers.addEventListener('click', function () { showTab('customers'); });
+
+  var deliverDialog = document.getElementById('deliver-dialog');
+  var deliverForm = document.getElementById('deliver-form');
+  var deliverErr = document.getElementById('deliver-err');
+  var activeDeliverReportId = null;
+
+  document.getElementById('deliver-cancel').addEventListener('click', function () { deliverDialog.close(); });
+  deliverForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    deliverErr.classList.remove('show');
+    var file = document.getElementById('deliver-file').files[0];
+    if (!file) return;
+    var fd = new FormData();
+    fd.set('file', file);
+    fetchJson('/api/admin/reports/' + encodeURIComponent(activeDeliverReportId) + '/deliver', { method: 'POST', body: fd })
+      .then(function (res) {
+        if (!res.ok) {
+          deliverErr.textContent = (res.data && res.data.error) || 'Something went wrong.';
+          deliverErr.classList.add('show');
+          return;
+        }
+        deliverDialog.close();
+        loadQueue();
+      });
+  });
+
+  function renderQueue(data) {
+    var unredeemedCard = document.getElementById('unredeemed-card');
+    var unredeemedBody = document.getElementById('unredeemed-body');
+    if (data.unredeemed_entitlements && data.unredeemed_entitlements.length) {
+      unredeemedCard.style.display = 'block';
+      unredeemedBody.innerHTML = data.unredeemed_entitlements.map(function (e) {
+        return '<tr><td>' + escapeHtml(e.full_name || e.email) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(e.email) + '</span></td>' +
+          '<td>' + escapeHtml(AUDIT_LABEL[e.audit_type] || e.audit_type) + '</td>' +
+          '<td>' + fmtDate(e.created_at) + '</td></tr>';
+      }).join('');
+    } else {
+      unredeemedCard.style.display = 'none';
+    }
+
+    var queueBody = document.getElementById('queue-body');
+    var queueEmpty = document.getElementById('queue-empty');
+    if (!data.reports || !data.reports.length) {
+      queueBody.innerHTML = '';
+      queueEmpty.style.display = 'block';
+    } else {
+      queueEmpty.style.display = 'none';
+      queueBody.innerHTML = data.reports.map(function (r) {
+        var intake = (r.str_provided ? 'STR ✓' : (r.audit_type === 'listing' ? '' : 'STR ✗')) +
+          (r.biz_report_provided ? ' · Biz ✓' : '');
+        var action = r.status === 'delivered'
+          ? ''
+          : '<button class="btn-primary deliver-btn" data-report-id="' + r.report_id + '">Deliver</button>';
+        return '<tr>' +
+          '<td>' + escapeHtml(r.full_name || r.email) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(r.email) + '</span></td>' +
+          '<td>' + escapeHtml(r.asin) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(r.marketplace) + '</span></td>' +
+          '<td>' + escapeHtml(AUDIT_LABEL[r.audit_type] || r.audit_type) + '</td>' +
+          '<td><span class="status-pill status-' + r.status + '">' + escapeHtml(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
+          '<td>' + escapeHtml(intake.trim()) + '</td>' +
+          '<td>' + fmtDate(r.created_at) + '</td>' +
+          '<td>' + action + '</td>' +
+          '</tr>';
+      }).join('');
+      Array.prototype.forEach.call(queueBody.querySelectorAll('.deliver-btn'), function (btn) {
+        btn.addEventListener('click', function () {
+          activeDeliverReportId = btn.getAttribute('data-report-id');
+          deliverErr.classList.remove('show');
+          deliverForm.reset();
+          deliverDialog.showModal();
+        });
+      });
+    }
+
+    var freeScanBody = document.getElementById('free-scan-body');
+    freeScanBody.innerHTML = (data.recent_free_scans || []).map(function (f) {
+      return '<tr><td>' + escapeHtml(f.email) + '</td><td>' + escapeHtml(f.asin) + '</td><td>' + escapeHtml(f.marketplace) + '</td><td>' + fmtDate(f.created_at) + '</td></tr>';
+    }).join('');
+  }
+
+  function loadQueue() {
+    return fetchJson('/api/admin/queue').then(function (res) {
+      if (!res.ok) {
+        if (res.status === 401) { unauthorizedEl.style.display = 'block'; appEl.style.display = 'none'; }
+        return;
+      }
+      appEl.style.display = 'block';
+      unauthorizedEl.style.display = 'none';
+      renderQueue(res.data);
+    });
+  }
+
+  // Customer search
+  var searchInput = document.getElementById('customer-search-input');
+  var searchBody = document.getElementById('customer-search-body');
+  var searchEmpty = document.getElementById('customer-search-empty');
+  var detailEl = document.getElementById('customer-detail');
+  var activeCustomerId = null;
+
+  function runSearch() {
+    var q = searchInput.value.trim();
+    if (!q) return;
+    fetchJson('/api/admin/customers?q=' + encodeURIComponent(q)).then(function (res) {
+      if (!res.ok) return;
+      var customers = res.data.customers || [];
+      if (!customers.length) {
+        searchBody.innerHTML = '';
+        searchEmpty.textContent = 'No customers found.';
+        searchEmpty.style.display = 'block';
+        return;
+      }
+      searchEmpty.style.display = 'none';
+      searchBody.innerHTML = customers.map(function (c) {
+        return '<tr><td>' + escapeHtml(c.email) + '</td><td>' + escapeHtml(c.full_name) + '</td><td>' + escapeHtml(c.company_name) + '</td><td>' + fmtDate(c.created_at) + '</td>' +
+          '<td><button class="btn-secondary view-customer-btn" data-customer-id="' + c.id + '">View</button></td></tr>';
+      }).join('');
+      Array.prototype.forEach.call(searchBody.querySelectorAll('.view-customer-btn'), function (btn) {
+        btn.addEventListener('click', function () { loadCustomerDetail(btn.getAttribute('data-customer-id')); });
+      });
+    });
+  }
+  document.getElementById('customer-search-btn').addEventListener('click', runSearch);
+  searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } });
+
+  document.getElementById('customer-detail-back').addEventListener('click', function (e) {
+    e.preventDefault();
+    detailEl.style.display = 'none';
+  });
+
+  function loadCustomerDetail(customerId) {
+    activeCustomerId = customerId;
+    fetchJson('/api/admin/customers/' + encodeURIComponent(customerId)).then(function (res) {
+      if (!res.ok) return;
+      var d = res.data;
+      detailEl.style.display = 'block';
+      document.getElementById('customer-detail-name').textContent = d.customer.full_name || d.customer.email;
+      document.getElementById('customer-detail-sub').textContent = d.customer.email + (d.customer.company_name ? ' · ' + d.customer.company_name : '') + ' · customer since ' + fmtDate(d.customer.created_at);
+
+      document.getElementById('detail-asins-body').innerHTML = (d.asins || []).map(function (a) {
+        var sub = a.subscription_until ? ('Active until ' + fmtDate(a.subscription_until)) : 'Not subscribed';
+        return '<tr><td>' + escapeHtml(a.asin) + '</td><td>' + escapeHtml(a.marketplace) + '</td><td>' + escapeHtml(sub) + '</td>' +
+          '<td><button class="btn-secondary extend-btn" data-asin-id="' + a.id + '">Extend subscription</button></td></tr>';
+      }).join('') || '<tr><td colspan="4" class="empty">No ASINs yet.</td></tr>';
+
+      document.getElementById('detail-reports-body').innerHTML = (d.reports || []).map(function (r) {
+        return '<tr><td>' + escapeHtml(r.asin) + '</td><td>' + escapeHtml(AUDIT_LABEL[r.audit_type] || r.audit_type) + '</td>' +
+          '<td><span class="status-pill status-' + r.status + '">' + escapeHtml(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
+          '<td>' + fmtDate(r.created_at) + '</td><td>' + fmtDate(r.delivered_at) + '</td></tr>';
+      }).join('') || '<tr><td colspan="5" class="empty">No reports yet.</td></tr>';
+
+      document.getElementById('detail-entitlements-body').innerHTML = (d.entitlements || []).map(function (e) {
+        var isComp = (e.source_order_id || '').indexOf('comp:') === 0;
+        return '<tr><td>' + escapeHtml(AUDIT_LABEL[e.audit_type] || e.audit_type) + '</td>' +
+          '<td>' + (isComp ? '<span class="badge-comp">Comped</span>' : escapeHtml(e.source_order_id)) + '</td>' +
+          '<td>' + escapeHtml(e.status) + '</td><td>' + fmtDate(e.created_at) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="empty">None yet.</td></tr>';
+
+      document.getElementById('detail-freescans-body').innerHTML = (d.free_scans || []).map(function (f) {
+        return '<tr><td>' + escapeHtml(f.asin) + '</td><td>' + escapeHtml(f.marketplace) + '</td><td>' + fmtDate(f.created_at) + '</td></tr>';
+      }).join('') || '<tr><td colspan="3" class="empty">None yet.</td></tr>';
+
+      document.getElementById('detail-actions-body').innerHTML = (d.admin_actions || []).map(function (a) {
+        return '<tr><td>' + escapeHtml(a.admin_email) + '</td><td>' + escapeHtml(a.action) + '</td><td>' + escapeHtml(a.reason) + '</td><td>' + fmtDate(a.created_at) + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="empty">None yet.</td></tr>';
+
+      Array.prototype.forEach.call(document.querySelectorAll('.extend-btn'), function (btn) {
+        btn.addEventListener('click', function () {
+          activeExtendAsinId = btn.getAttribute('data-asin-id');
+          extendErr.classList.remove('show');
+          extendForm.reset();
+          extendDialog.showModal();
+        });
+      });
+    });
+  }
+
+  // Comp an audit
+  var grantDialog = document.getElementById('grant-dialog');
+  var grantForm = document.getElementById('grant-form');
+  var grantErr = document.getElementById('grant-err');
+  document.getElementById('grant-btn').addEventListener('click', function () {
+    grantErr.classList.remove('show');
+    grantForm.reset();
+    grantDialog.showModal();
+  });
+  document.getElementById('grant-cancel').addEventListener('click', function () { grantDialog.close(); });
+  grantForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    grantErr.classList.remove('show');
+    fetchJson('/api/admin/entitlements/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer_id: activeCustomerId,
+        audit_type: document.getElementById('grant-audit-type').value,
+        reason: document.getElementById('grant-reason').value.trim(),
+      }),
+    }).then(function (res) {
+      if (!res.ok) {
+        grantErr.textContent = (res.data && res.data.error) || 'Something went wrong.';
+        grantErr.classList.add('show');
+        return;
+      }
+      grantDialog.close();
+      loadCustomerDetail(activeCustomerId);
+    });
+  });
+
+  // Extend subscription
+  var extendDialog = document.getElementById('extend-dialog');
+  var extendForm = document.getElementById('extend-form');
+  var extendErr = document.getElementById('extend-err');
+  var activeExtendAsinId = null;
+  document.getElementById('extend-cancel').addEventListener('click', function () { extendDialog.close(); });
+  extendForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    extendErr.classList.remove('show');
+    fetchJson('/api/admin/subscriptions/extend', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        asin_id: activeExtendAsinId,
+        until: document.getElementById('extend-until').value,
+        reason: document.getElementById('extend-reason').value.trim(),
+      }),
+    }).then(function (res) {
+      if (!res.ok) {
+        extendErr.textContent = (res.data && res.data.error) || 'Something went wrong.';
+        extendErr.classList.add('show');
+        return;
+      }
+      extendDialog.close();
+      loadCustomerDetail(activeCustomerId);
+    });
+  });
+
+  loadQueue();
+})();
+</script>
+</body>
+</html>
