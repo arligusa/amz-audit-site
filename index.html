@@ -218,8 +218,10 @@
   .str-howto-note { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; }
   .optional-divider { margin: 20px 0 4px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 13px; font-weight: 700; color: #1c2027; }
   .optional-divider span { display: block; font-weight: 400; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
-  .checkbox-label { display: flex !important; align-items: flex-start; gap: 8px; font-weight: 400 !important; }
-  .checkbox-label input { width: auto; margin-top: 3px; }
+  .intake-form input[type="file"] {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
+    font-size: 13.5px; font-family: inherit; color: var(--ink); background: #fff;
+  }
   .form-err { color: #b42318; font-size: 13px; margin-top: 10px; display: none; text-align: left; }
   .form-err.show { display: block; }
   .btn-block { width: 100%; text-align: center; display: block; border: none; cursor: pointer; }
@@ -382,11 +384,12 @@
                 <li>Date range: last 30&ndash;60 days.</li>
                 <li>Format: .csv or .xlsx, whichever Amazon offers.</li>
                 <li>Download it as-is once it's ready (a few minutes, up to ~45 min for long ranges) — don't filter or resave it.</li>
-                <li>Email the file to contact@arli.arligusa.com with your order number in the subject line. <strong>We can't start your PPC audit until we have it.</strong></li>
+                <li>Upload the file below. <strong>We can't start your PPC audit until we have it.</strong></li>
               </ol>
               <p class="str-howto-note">Older accounts: Campaign Manager → Bulk Operations → Download campaigns → Enabled &amp; Paused → check Sponsored Products / Sponsored Brands search-term data.</p>
             </div>
-            <label><input type="checkbox" id="in-str-check" required>I'll send my Search Term Report to contact@arli.arligusa.com after purchase</label>
+            <label for="in-str-file">Upload your Search Term Report (.csv or .xlsx)</label>
+            <input type="file" id="in-str-file" accept=".csv,.xlsx,.xls">
             <textarea id="in-str-note" placeholder="Optional — anything about your PPC setup worth knowing now (monthly ad spend, campaign count, etc.)"></textarea>
           </div>
 
@@ -422,11 +425,12 @@
               <li>Left sidebar, under "By ASIN" → Detail Page Sales and Traffic.</li>
               <li>Set the date range (top right) to the last 30 days.</li>
               <li>Click Download → choose .csv.</li>
-              <li>Email the file to contact@arli.arligusa.com with your order number in the subject line.</li>
+              <li>Upload the file below.</li>
             </ol>
             <p class="str-howto-note">Real traffic and conversion data for this exact ASIN — it grounds the findings in your actual numbers instead of estimates from the public page.</p>
           </div>
-          <label class="checkbox-label"><input type="checkbox" id="in-biz-report-check">I'll send my Business Report to contact@arli.arligusa.com after purchase</label>
+          <label for="in-biz-report-file">Upload your Business Report (.csv, optional)</label>
+          <input type="file" id="in-biz-report-file" accept=".csv,.xlsx,.xls">
 
           <label for="in-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
           <textarea id="in-notes" placeholder="Be specific — 'sales dropped after a competitor undercut my price' tells us where to dig first."></textarea>
@@ -503,25 +507,28 @@
     errEl.classList.remove('show');
     errEl.textContent = '';
 
-    var payload = {
-      email: document.getElementById('in-email').value.trim(),
-      asin_or_url: document.getElementById('in-asin').value.trim(),
-      audit_type: form.querySelector('input[name=audit_type]:checked').value,
-      marketplace: document.getElementById('in-marketplace').value,
-      str_provided: document.getElementById('in-str-check').checked,
-      str_note: document.getElementById('in-str-note').value.trim(),
-      notes: document.getElementById('in-notes').value.trim(),
-      backend_terms: document.getElementById('in-backend-terms').value.trim(),
-      biz_report_provided: document.getElementById('in-biz-report-check').checked,
-    };
+    var email = document.getElementById('in-email').value.trim();
+    var auditType = form.querySelector('input[name=audit_type]:checked').value;
+
+    var formData = new FormData();
+    formData.set('email', email);
+    formData.set('asin_or_url', document.getElementById('in-asin').value.trim());
+    formData.set('audit_type', auditType);
+    formData.set('marketplace', document.getElementById('in-marketplace').value);
+    formData.set('str_note', document.getElementById('in-str-note').value.trim());
+    formData.set('notes', document.getElementById('in-notes').value.trim());
+    formData.set('backend_terms', document.getElementById('in-backend-terms').value.trim());
+    var strFile = document.getElementById('in-str-file').files[0];
+    if (strFile) formData.set('str_report_file', strFile);
+    var bizFile = document.getElementById('in-biz-report-file').files[0];
+    if (bizFile) formData.set('biz_report_file', bizFile);
 
     form.style.display = 'none';
     loadingEl.style.display = 'block';
 
     fetch('/api/prescan', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: formData,
     })
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (res) {
@@ -532,8 +539,8 @@
           errEl.classList.add('show');
           return;
         }
-        lastSubmission = { id: res.data.id, edit_token: res.data.edit_token, asin: res.data.asin, audit_type: payload.audit_type, email: payload.email };
-        renderResult(res.data.prescan, payload.audit_type, res.data.asin, res.data.id, res.data.edit_token);
+        lastSubmission = { id: res.data.id, edit_token: res.data.edit_token, asin: res.data.asin, audit_type: auditType, email: email };
+        renderResult(res.data.prescan, auditType, res.data.asin, res.data.id, res.data.edit_token);
       })
       .catch(function () {
         loadingEl.style.display = 'none';

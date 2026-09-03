@@ -115,12 +115,14 @@
         <label class="audit-type-opt"><input type="radio" name="c-audit-type" value="both"> Both — $73.50</label>
       </div>
       <div id="c-str-wrap" style="display:none;">
-        <label><input type="checkbox" id="c-str-check" style="width:auto;display:inline-block;margin-right:6px;">I have my Search Term Report ready to send</label>
+        <label for="c-str-file">Search Term Report (.csv or .xlsx)</label>
+        <input type="file" id="c-str-file" accept=".csv,.xlsx,.xls">
         <textarea id="c-str-note" placeholder="Optional — anything about your PPC setup worth knowing"></textarea>
       </div>
       <label for="c-backend-terms">Backend search terms (optional)</label>
       <textarea id="c-backend-terms" placeholder="Paste them if you have them handy — Seller Central → Catalog → Manage All Listings → Edit → More details tab → Search terms"></textarea>
-      <label><input type="checkbox" id="c-biz-report-check" style="width:auto;display:inline-block;margin-right:6px;">I'll send my Business Report (Seller Central → Reports → Business Reports → Detail Page Sales and Traffic) to contact@arli.arligusa.com</label>
+      <label for="c-biz-report-file">Business Report (.csv, optional — Seller Central → Reports → Business Reports → Detail Page Sales and Traffic)</label>
+      <input type="file" id="c-biz-report-file" accept=".csv,.xlsx,.xls">
       <label for="c-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
       <textarea id="c-notes"></textarea>
       <div id="c-err" class="err"></div>
@@ -278,17 +280,19 @@
 
     var auditType = checkoutForm.querySelector('input[name=c-audit-type]:checked').value;
 
+    var formData = new FormData();
+    formData.set('audit_type', auditType);
+    formData.set('str_note', document.getElementById('c-str-note').value.trim());
+    formData.set('notes', document.getElementById('c-notes').value.trim());
+    formData.set('backend_terms', document.getElementById('c-backend-terms').value.trim());
+    var strFile = document.getElementById('c-str-file').files[0];
+    if (strFile) formData.set('str_report_file', strFile);
+    var bizFile = document.getElementById('c-biz-report-file').files[0];
+    if (bizFile) formData.set('biz_report_file', bizFile);
+
     fetch('/api/portal/asins/' + encodeURIComponent(activeAsinId) + '/checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        audit_type: auditType,
-        str_provided: document.getElementById('c-str-check').checked,
-        str_note: document.getElementById('c-str-note').value.trim(),
-        notes: document.getElementById('c-notes').value.trim(),
-        backend_terms: document.getElementById('c-backend-terms').value.trim(),
-        biz_report_provided: document.getElementById('c-biz-report-check').checked,
-      }),
+      body: formData,
     })
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (res) {

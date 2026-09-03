@@ -1,4 +1,5 @@
 import { json, isValidEmail, extractAsin, runPrescan } from '../_shared/prescan-lib.js';
+import { validateUpload, uploadKey } from '../_shared/upload-lib.js';
 
 function sanitize(row) {
   return {
@@ -7,11 +8,11 @@ function sanitize(row) {
     asin_or_url: row.asin_or_url,
     audit_type: row.audit_type,
     marketplace: row.marketplace,
-    str_provided: !!row.str_provided,
+    str_provided: !!row.str_report_r2_key,
     str_note: row.str_note || '',
     notes: row.notes || '',
     backend_terms: row.backend_terms || '',
-    biz_report_provided: !!row.biz_report_provided,
+    biz_report_provided: !!row.biz_report_r2_key,
     prescan_status: row.prescan_status,
     prescan_result: row.prescan_result ? JSON.parse(row.prescan_result) : null,
     fulfillment_status: row.fulfillment_status,
@@ -42,15 +43,18 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  let body;
+  let form;
   try {
-    body = await request.json();
+    form = await request.formData();
   } catch (e) {
     return json({ error: 'Invalid request.' }, 400);
   }
 
-  const id = (body.id || '').toString();
-  const token = (body.token || '').toString();
+  const has = (name) => form.has(name);
+  const field = (name) => (form.get(name) || '').toString();
+
+  const id = field('id');
+  const token = field('token');
   if (!id || !token) {
     return json({ error: 'Missing id or token.' }, 400);
   }
@@ -60,29 +64,58 @@ export async function onRequestPost(context) {
     return json({ error: "We couldn't find that submission. Double-check the link, or email contact@arli.arligusa.com." }, 404);
   }
 
-  const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : row.email;
+  const email = has('email') ? field('email').trim().toLowerCase() : row.email;
   if (!isValidEmail(email)) {
     return json({ error: 'Please enter a valid email address.' }, 400);
   }
 
-  const rawAsin = body.asin_or_url !== undefined ? String(body.asin_or_url).trim() : row.asin_or_url;
+  const rawAsin = has('asin_or_url') ? field('asin_or_url').trim() : row.asin_or_url;
   const asin = extractAsin(rawAsin) || row.asin_or_url;
 
-  const auditType = body.audit_type !== undefined ? String(body.audit_type) : row.audit_type;
+  const auditType = has('audit_type') ? field('audit_type') : row.audit_type;
   if (!['listing', 'ppc', 'both'].includes(auditType)) {
     return json({ error: 'Please choose a valid audit type.' }, 400);
   }
 
-  const marketplace = body.marketplace !== undefined ? String(body.marketplace) : row.marketplace;
-  const strProvided = body.str_provided !== undefined ? !!body.str_provided : !!row.str_provided;
-  const strNote = body.str_note !== undefined ? String(body.str_note).trim().slice(0, 500) : row.str_note;
-  const notes = body.notes !== undefined ? String(body.notes).trim().slice(0, 1000) : row.notes;
-  const backendTerms = body.backend_terms !== undefined ? String(body.backend_terms).trim().slice(0, 1000) : row.backend_terms;
-  const bizReportProvided = body.biz_report_provided !== undefined ? !!body.biz_report_provided : !!row.biz_report_provided;
+  const marketplace = has('marketplace') ? field('marketplace') : row.marketplace;
+  const strNote = has('str_note') ? field('str_note').trim().slice(0, 500) : row.str_note;
+  const notes = has('notes') ? field('notes').trim().slice(0, 1000) : row.notes;
+  const backendTerms = has('backend_terms') ? field('backend_terms').trim().slice(0, 1000) : row.backend_terms;
 
-  if (['ppc', 'both'].includes(auditType) && !strProvided) {
+  const strReportFile = form.get('str_report_file');
+  const bizReportFile = form.get('biz_report_file');
+
+  let strReportKey = row.str_report_r2_key;
+  if (strReportFile && strReportFile.size > 0) {
+    const validation = await validateUpload(strReportFile);
+    if (validation.error) return json({ error: validation.error }, 400);
+    strReportKey = uploadKey('submissions', id, 'str_report', validation.ext);
+    try {
+      await env.UPLOADS_BUCKET.put(strReportKey, strReportFile.stream(), {
+        httpMetadata: { contentType: strReportFile.type || 'application/octet-stream' },
+      });
+    } catch (e) {
+      return json({ error: 'Something went wrong uploading your file. Please try again in a moment.' }, 500);
+    }
+  }
+
+  let bizReportKey = row.biz_report_r2_key;
+  if (bizReportFile && bizReportFile.size > 0) {
+    const validation = await validateUpload(bizReportFile);
+    if (validation.error) return json({ error: validation.error }, 400);
+    bizReportKey = uploadKey('submissions', id, 'biz_report', validation.ext);
+    try {
+      await env.UPLOADS_BUCKET.put(bizReportKey, bizReportFile.stream(), {
+        httpMetadata: { contentType: bizReportFile.type || 'application/octet-stream' },
+      });
+    } catch (e) {
+      return json({ error: 'Something went wrong uploading your file. Please try again in a moment.' }, 500);
+    }
+  }
+
+  if (['ppc', 'both'].includes(auditType) && !strReportKey) {
     return json(
-      { error: "A PPC audit requires your Search Term Report. Check the box to confirm you'll send it, or switch to a Listing-only audit." },
+      { error: 'A PPC audit requires your Search Term Report. Upload the file below, or switch to a Listing-only audit.' },
       400
     );
   }
@@ -99,7 +132,7 @@ export async function onRequestPost(context) {
   await env.DB.prepare(
     `UPDATE submissions SET
       email = ?, asin_or_url = ?, audit_type = ?, marketplace = ?, str_provided = ?, str_note = ?, notes = ?,
-      backend_terms = ?, biz_report_provided = ?,
+      backend_terms = ?, biz_report_provided = ?, str_report_r2_key = ?, biz_report_r2_key = ?,
       prescan_status = ?, prescan_result = ?, prescan_score = ?, updated_at = ?
      WHERE id = ? AND edit_token = ?`
   )
@@ -108,11 +141,13 @@ export async function onRequestPost(context) {
       asin,
       auditType,
       marketplace,
-      strProvided ? 1 : 0,
+      strReportKey ? 1 : 0,
       strNote,
       notes,
       backendTerms,
-      bizReportProvided ? 1 : 0,
+      bizReportKey ? 1 : 0,
+      strReportKey,
+      bizReportKey,
       prescan.status,
       JSON.stringify(prescan),
       prescan.score ?? null,

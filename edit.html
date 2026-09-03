@@ -45,6 +45,8 @@
   .ok-msg { color: var(--accent); font-size: 13.5px; margin-top: 12px; display: none; }
   .ok-msg.show { display: block; }
   .loading, .notfound { text-align: center; color: var(--ink-soft); font-size: 14.5px; padding: 20px 0; }
+  .upload-status { font-size: 12.5px; color: var(--accent); margin: 2px 0 6px; display: none; }
+  .upload-status.show { display: block; }
   a { color: var(--accent); }
 </style>
 </head>
@@ -86,10 +88,12 @@
             <li>Date range: last 30&ndash;60 days.</li>
             <li>Format: .csv or .xlsx, whichever Amazon offers.</li>
             <li>Download it as-is once it's ready — don't filter or resave it.</li>
-            <li>Email the file to contact@arli.arligusa.com with your order number in the subject line. <strong>We can't start your PPC audit until we have it.</strong></li>
+            <li>Upload the file below. <strong>We can't start your PPC audit until we have it.</strong></li>
           </ol>
         </div>
-        <label><input type="checkbox" id="e-str-check" style="width:auto;display:inline-block;margin-right:6px;">I'll send my Search Term Report to contact@arli.arligusa.com</label>
+        <label for="e-str-file">Search Term Report (.csv or .xlsx)</label>
+        <div id="e-str-status" class="upload-status"></div>
+        <input type="file" id="e-str-file" accept=".csv,.xlsx,.xls">
         <textarea id="e-str-note" placeholder="Optional — anything about your PPC setup worth knowing"></textarea>
 
         <label for="e-marketplace">Marketplace</label>
@@ -123,10 +127,12 @@
             <li>Left sidebar, under "By ASIN" → Detail Page Sales and Traffic.</li>
             <li>Set the date range (top right) to the last 30 days.</li>
             <li>Click Download → choose .csv.</li>
-            <li>Email the file to contact@arli.arligusa.com with your order number in the subject line.</li>
+            <li>Upload the file below.</li>
           </ol>
         </div>
-        <label><input type="checkbox" id="e-biz-report-check" style="width:auto;display:inline-block;margin-right:6px;">I'll send my Business Report to contact@arli.arligusa.com</label>
+        <label for="e-biz-report-file">Business Report (.csv, optional)</label>
+        <div id="e-biz-report-status" class="upload-status"></div>
+        <input type="file" id="e-biz-report-file" accept=".csv,.xlsx,.xls">
 
         <label for="e-notes">What's your biggest frustration with this listing or your ads right now? (optional)</label>
         <textarea id="e-notes"></textarea>
@@ -184,11 +190,19 @@
       document.getElementById('e-email').value = s.email;
       document.getElementById('e-asin').value = s.asin_or_url;
       document.getElementById('e-marketplace').value = s.marketplace || 'amazon.com';
-      document.getElementById('e-str-check').checked = !!s.str_provided;
       document.getElementById('e-str-note').value = s.str_note || '';
       document.getElementById('e-notes').value = s.notes || '';
       document.getElementById('e-backend-terms').value = s.backend_terms || '';
-      document.getElementById('e-biz-report-check').checked = !!s.biz_report_provided;
+      var strStatus = document.getElementById('e-str-status');
+      if (s.str_provided) {
+        strStatus.textContent = 'On file — uploading a new one below replaces it.';
+        strStatus.classList.add('show');
+      }
+      var bizStatus = document.getElementById('e-biz-report-status');
+      if (s.biz_report_provided) {
+        bizStatus.textContent = 'On file — uploading a new one below replaces it.';
+        bizStatus.classList.add('show');
+      }
       var radios = document.querySelectorAll('input[name=e-audit-type]');
       for (var i = 0; i < radios.length; i++) {
         radios[i].checked = radios[i].value === s.audit_type;
@@ -210,19 +224,20 @@
       if (radios[i].checked) auditType = radios[i].value;
     }
 
-    var payload = {
-      id: id,
-      token: token,
-      email: document.getElementById('e-email').value.trim(),
-      asin_or_url: document.getElementById('e-asin').value.trim(),
-      audit_type: auditType,
-      marketplace: document.getElementById('e-marketplace').value,
-      str_provided: document.getElementById('e-str-check').checked,
-      str_note: document.getElementById('e-str-note').value.trim(),
-      notes: document.getElementById('e-notes').value.trim(),
-      backend_terms: document.getElementById('e-backend-terms').value.trim(),
-      biz_report_provided: document.getElementById('e-biz-report-check').checked,
-    };
+    var formData = new FormData();
+    formData.set('id', id);
+    formData.set('token', token);
+    formData.set('email', document.getElementById('e-email').value.trim());
+    formData.set('asin_or_url', document.getElementById('e-asin').value.trim());
+    formData.set('audit_type', auditType);
+    formData.set('marketplace', document.getElementById('e-marketplace').value);
+    formData.set('str_note', document.getElementById('e-str-note').value.trim());
+    formData.set('notes', document.getElementById('e-notes').value.trim());
+    formData.set('backend_terms', document.getElementById('e-backend-terms').value.trim());
+    var strFile = document.getElementById('e-str-file').files[0];
+    if (strFile) formData.set('str_report_file', strFile);
+    var bizFile = document.getElementById('e-biz-report-file').files[0];
+    if (bizFile) formData.set('biz_report_file', bizFile);
 
     var btn = form.querySelector('button[type=submit]');
     btn.disabled = true;
@@ -230,8 +245,7 @@
 
     fetch('/api/submission', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: formData,
     })
       .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
       .then(function (res) {
@@ -243,6 +257,17 @@
           return;
         }
         okEl.classList.add('show');
+        var s = res.data.submission;
+        var strStatus = document.getElementById('e-str-status');
+        if (s.str_provided) {
+          strStatus.textContent = 'On file — uploading a new one below replaces it.';
+          strStatus.classList.add('show');
+        }
+        var bizStatus = document.getElementById('e-biz-report-status');
+        if (s.biz_report_provided) {
+          bizStatus.textContent = 'On file — uploading a new one below replaces it.';
+          bizStatus.classList.add('show');
+        }
       })
       .catch(function () {
         btn.disabled = false;
