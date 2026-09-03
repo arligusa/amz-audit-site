@@ -4,7 +4,7 @@
 // someone buying directly from the Shopify product page with no site interaction
 // at all. See /Users/kendall/.claude/plans/effervescent-beaming-fox.md for the
 // full design.
-import { json, auditTypeFromVariantTitle, SHOPIFY_ATTR } from '../../_shared/prescan-lib.js';
+import { json, auditTypeFromVariantTitle, SHOPIFY_ATTR, SHOPIFY_PRODUCT_ID } from '../../_shared/prescan-lib.js';
 import { verifyShopifyWebhookHmac, sendPlainEmail, newToken, hashToken, magicLinkExpiry } from '../../_shared/auth-lib.js';
 
 export async function onRequestPost(context) {
@@ -26,6 +26,18 @@ export async function onRequestPost(context) {
 
   const orderId = order.id !== undefined && order.id !== null ? String(order.id) : '';
   if (!orderId) return json({ error: 'Missing order id.' }, 400);
+
+  // This webhook subscription is store-wide — Shopify has no per-product filter at
+  // the subscription level, and the store sells other, unrelated products too. Gate
+  // on product id BEFORE touching the database at all: no customer created, no
+  // email sent, nothing written for an order that isn't ours. auditLineItems is
+  // reused below so this check and the actual processing can't drift apart.
+  const auditLineItems = (order.line_items || []).filter(
+    (li) => li && String(li.product_id) === SHOPIFY_PRODUCT_ID
+  );
+  if (!auditLineItems.length) {
+    return json({ ok: true, ignored: 'not_our_product' });
+  }
 
   const now = new Date();
   const nowIso = now.toISOString();
@@ -66,9 +78,9 @@ export async function onRequestPost(context) {
   // One entitlement per audit purchased. Today's product always sells qty 1 of one
   // variant, so this is always exactly one entitlement — written as a loop so a
   // future multi-quantity/multi-ASIN package works without changing this logic.
-  for (const lineItem of order.line_items || []) {
+  for (const lineItem of auditLineItems) {
     const auditType = auditTypeFromVariantTitle(lineItem.variant_title || lineItem.title);
-    if (!auditType) continue; // not one of our audit variants — ignore (e.g. future non-audit products)
+    if (!auditType) continue; // our product, but a variant title we don't recognize — skip rather than guess
     const quantity = Number(lineItem.quantity) || 1;
     for (let i = 0; i < quantity; i++) {
       await createAndRedeemEntitlement({ env, customer, auditType, orderId, attrs, nowIso });

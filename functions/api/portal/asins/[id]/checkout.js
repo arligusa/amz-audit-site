@@ -1,4 +1,4 @@
-import { json, AUDIT_LABEL, SHOPIFY_ATTR } from '../../../../_shared/prescan-lib.js';
+import { json, AUDIT_LABEL, SHOPIFY_ATTR, SHOPIFY_PRODUCT_GID } from '../../../../_shared/prescan-lib.js';
 import { requireSession, unauthorized } from '../../../../_shared/auth-lib.js';
 import { validateUpload, uploadKey } from '../../../../_shared/upload-lib.js';
 
@@ -7,7 +7,6 @@ import { validateUpload, uploadKey } from '../../../../_shared/upload-lib.js';
 // product.fetch needs the full gid:// string — both bit the homepage flow once already.
 const SHOPIFY_DOMAIN = 'arlig.myshopify.com';
 const STOREFRONT_TOKEN = 'a6836f04aad6ac9499f609bc9df6110d';
-const PRODUCT_GID = 'gid://shopify/Product/15863583179038';
 const API_VERSION = '2024-10';
 
 async function shopifyGraphql(query, variables) {
@@ -94,7 +93,7 @@ export async function onRequestPost(context) {
 
   const productResp = await shopifyGraphql(
     `query($id: ID!) { product(id: $id) { variants(first: 10) { edges { node { id title } } } } }`,
-    { id: PRODUCT_GID }
+    { id: SHOPIFY_PRODUCT_GID }
   );
 
   const variants = productResp?.data?.product?.variants?.edges || [];

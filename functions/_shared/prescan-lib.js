@@ -13,6 +13,15 @@ export function isValidEmail(email) {
   return typeof email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+// The one Shopify product these endpoints care about — the store sells other,
+// unrelated products too, and the order-paid webhook fires for every paid order
+// in the store regardless of what was bought. SHOPIFY_PRODUCT_ID (the numeric id
+// straight off order.line_items[].product_id in the webhook payload) is the gate
+// the webhook uses to ignore anything that isn't an Arli Audits purchase, before
+// it does anything else — no customer created, no email sent, nothing written.
+export const SHOPIFY_PRODUCT_ID = '15863583179038';
+export const SHOPIFY_PRODUCT_GID = `gid://shopify/Product/${SHOPIFY_PRODUCT_ID}`;
+
 // Shopify variant title <-> our internal audit_type. One place so the checkout call
 // sites (homepage, portal) and the order-paid webhook can't drift apart on naming.
 export const AUDIT_LABEL = { listing: 'Listing Audit', ppc: 'PPC Audit', both: 'Both (Listing + PPC)' };

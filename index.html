@@ -577,6 +577,10 @@
   function proceedToPurchase(submission) {
     loadScript(function () {
       var client = getClient();
+      // This id must match SHOPIFY_PRODUCT_ID in functions/_shared/prescan-lib.js —
+      // that's what the order-paid webhook uses to ignore orders for the store's
+      // other, unrelated products. Can't share the constant directly; this is a
+      // plain browser script with no build step, prescan-lib.js is server-side only.
       client.product.fetch('gid://shopify/Product/15863583179038').then(function (product) {
         var targetTitle = AUDIT_LABEL[submission.audit_type];
         var variant = null;
