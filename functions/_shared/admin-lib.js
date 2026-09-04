@@ -53,17 +53,29 @@ function accessTokenFromRequest(request) {
   return match ? match[1] : null;
 }
 
-// Verifies the Access JWT on this request. Returns the verified email on success, or
-// null if the token is missing, malformed, expired, wrong audience, or fails
-// signature verification — every failure mode is treated the same (fail closed).
-export async function verifyAccessJwt(request, env) {
-  if (!env.CF_ACCESS_AUD) return null;
+// Verifies the Access JWT on this request. Returns { ok: true, email } on success,
+// or { ok: false, reason, debug } describing exactly which check failed — reason is
+// a short machine-readable code, debug carries the specific values involved (never
+// the raw token or signature, just claims/lengths/booleans) so a failure can be
+// diagnosed without re-deploying more debug code every time. Everything downstream
+// only cares about `ok`/`email`; the reason/debug detail exists for
+// functions/api/admin/whoami.js, a diagnostic endpoint (still behind Access — this
+// isn't reachable by anyone who hasn't already passed Access's own login).
+export async function verifyAccessJwtDetailed(request, env) {
+  const debug = {};
 
-  const token = accessTokenFromRequest(request);
-  if (!token) return null;
+  debug.hasAudEnvVar = !!env.CF_ACCESS_AUD;
+  if (!env.CF_ACCESS_AUD) return { ok: false, reason: 'server_missing_CF_ACCESS_AUD', debug };
+
+  const headerToken = request.headers.get('Cf-Access-Jwt-Assertion');
+  const cookieToken = accessTokenFromRequest(request);
+  debug.tokenSource = headerToken ? 'header' : (cookieToken ? 'cookie' : 'none');
+  const token = headerToken || cookieToken;
+  if (!token) return { ok: false, reason: 'no_token_on_request', debug };
 
   const parts = token.split('.');
-  if (parts.length !== 3) return null;
+  debug.tokenPartsCount = parts.length;
+  if (parts.length !== 3) return { ok: false, reason: 'malformed_token', debug };
   const [headerB64, payloadB64, signatureB64] = parts;
 
   let header, payload;
@@ -71,29 +83,37 @@ export async function verifyAccessJwt(request, env) {
     header = base64UrlDecodeJson(headerB64);
     payload = base64UrlDecodeJson(payloadB64);
   } catch (e) {
-    return null;
+    return { ok: false, reason: 'undecodable_token', debug };
   }
 
+  debug.kid = header.kid || null;
+  debug.payloadAud = payload.aud ?? null;
+  debug.expectedAud = env.CF_ACCESS_AUD;
+  debug.payloadIss = payload.iss ?? null;
+  debug.payloadExp = payload.exp ?? null;
+  debug.payloadEmail = payload.email ?? null;
+
   const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (!aud.includes(env.CF_ACCESS_AUD)) return null;
-  if (!payload.exp || payload.exp * 1000 < Date.now()) return null;
-  if (payload.iss && !String(payload.iss).includes(ACCESS_TEAM_DOMAIN)) return null;
-  if (!payload.email) return null;
+  if (!aud.includes(env.CF_ACCESS_AUD)) return { ok: false, reason: 'aud_mismatch', debug };
+  if (!payload.exp || payload.exp * 1000 < Date.now()) return { ok: false, reason: 'expired', debug };
+  if (payload.iss && !String(payload.iss).includes(ACCESS_TEAM_DOMAIN)) return { ok: false, reason: 'iss_mismatch', debug };
+  if (!payload.email) return { ok: false, reason: 'no_email_claim', debug };
 
   let jwks;
   try {
     jwks = await fetchAccessJwks();
   } catch (e) {
-    return null;
+    return { ok: false, reason: 'jwks_fetch_failed', debug: { ...debug, error: String(e) } };
   }
+  debug.jwksKidsAvailable = (jwks.keys || []).map((k) => k.kid);
   const jwk = (jwks.keys || []).find((k) => k.kid === header.kid);
-  if (!jwk) return null;
+  if (!jwk) return { ok: false, reason: 'kid_not_in_jwks', debug };
 
   let publicKey;
   try {
     publicKey = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
   } catch (e) {
-    return null;
+    return { ok: false, reason: 'key_import_failed', debug: { ...debug, error: String(e) } };
   }
 
   const valid = await crypto.subtle.verify(
@@ -102,13 +122,15 @@ export async function verifyAccessJwt(request, env) {
     base64UrlToUint8Array(signatureB64),
     new TextEncoder().encode(`${headerB64}.${payloadB64}`)
   );
-  if (!valid) return null;
+  debug.signatureValid = valid;
+  if (!valid) return { ok: false, reason: 'bad_signature', debug };
 
-  return payload.email;
+  return { ok: true, email: payload.email, debug };
 }
 
 export async function requireAdmin(request, env) {
-  return verifyAccessJwt(request, env);
+  const result = await verifyAccessJwtDetailed(request, env);
+  return result.ok ? result.email : null;
 }
 
 export function adminUnauthorized() {
