@@ -57,10 +57,9 @@ function accessTokenFromRequest(request) {
 // or { ok: false, reason, debug } describing exactly which check failed — reason is
 // a short machine-readable code, debug carries the specific values involved (never
 // the raw token or signature, just claims/lengths/booleans) so a failure can be
-// diagnosed without re-deploying more debug code every time. Everything downstream
-// only cares about `ok`/`email`; the reason/debug detail exists for
-// functions/api/admin/whoami.js, a diagnostic endpoint (still behind Access — this
-// isn't reachable by anyone who hasn't already passed Access's own login).
+// diagnosed without adding more debug code every time. Everything downstream only
+// cares about `ok`/`email`; the reason/debug detail is kept for future diagnostic
+// endpoints if admin auth ever needs debugging again.
 export async function verifyAccessJwtDetailed(request, env) {
   const debug = {};
 
