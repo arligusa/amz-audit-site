@@ -33,6 +33,10 @@
   p.sub { color: var(--ink-soft); font-size: 13.5px; margin: 0 0 16px; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   th { text-align: left; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--ink); }
+  th.sortable .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.5; }
+  th.sortable.sort-active .sort-arrow { opacity: 1; }
   td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
   tr:last-child td { border-bottom: none; }
   .status-pill { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
@@ -106,16 +110,28 @@
 
     <div id="view-customers" style="display:none;">
       <div class="card">
-        <h2>Find a customer</h2>
+        <h2>Customers</h2>
         <div class="search-row">
-          <input type="text" id="customer-search-input" placeholder="Email, name, ASIN, or Shopify order id">
+          <input type="text" id="customer-search-input" placeholder="Email, name, ASIN, or Shopify order id — leave blank for all">
           <button class="btn-primary" id="customer-search-btn">Search</button>
+          <button class="btn-secondary" id="customer-export-btn">Export CSV</button>
         </div>
         <table>
-          <thead><tr><th>Email</th><th>Name</th><th>Company</th><th>Customer since</th><th></th></tr></thead>
+          <thead>
+            <tr>
+              <th class="sortable" data-sort="email">Email</th>
+              <th class="sortable" data-sort="full_name">Name</th>
+              <th class="sortable" data-sort="company_name">Company</th>
+              <th class="sortable" data-sort="total_spend">Total spend</th>
+              <th class="sortable" data-sort="subscription_until">Subscription</th>
+              <th class="sortable" data-sort="last_login">Last login</th>
+              <th class="sortable" data-sort="created_at">Customer since</th>
+              <th></th>
+            </tr>
+          </thead>
           <tbody id="customer-search-body"></tbody>
         </table>
-        <div id="customer-search-empty" class="empty">Search above to find a customer.</div>
+        <div id="customer-search-empty" class="empty" style="display:none;">No customers found.</div>
       </div>
 
       <div id="customer-detail" class="card" style="display:none;">
@@ -340,37 +356,123 @@
     });
   }
 
-  // Customer search
+  // Customer list — blank search returns everyone, so this table doubles as the
+  // full customer roster. Sorting/exporting both operate on the last-fetched list
+  // client-side rather than re-hitting the API, since admin-scale row counts don't
+  // need server-side sort/pagination yet.
   var searchInput = document.getElementById('customer-search-input');
   var searchBody = document.getElementById('customer-search-body');
   var searchEmpty = document.getElementById('customer-search-empty');
   var detailEl = document.getElementById('customer-detail');
   var activeCustomerId = null;
+  var currentCustomers = [];
+  var sortState = { key: 'created_at', dir: 'desc' };
+
+  function fmtMoney(n) {
+    return '$' + (Number(n) || 0).toFixed(2);
+  }
+  function subscriptionLabel(untilIso) {
+    if (!untilIso) return '—';
+    var until = new Date(untilIso);
+    return (until.getTime() > Date.now() ? 'Active until ' : 'Expired ') + until.toLocaleDateString();
+  }
+
+  function sortedCustomers() {
+    var key = sortState.key;
+    var dir = sortState.dir === 'asc' ? 1 : -1;
+    return currentCustomers.slice().sort(function (a, b) {
+      var av = a[key], bv = b[key];
+      if (key === 'total_spend') { av = Number(av) || 0; bv = Number(bv) || 0; }
+      else if (key === 'last_login' || key === 'created_at' || key === 'subscription_until') {
+        av = av ? new Date(av).getTime() : -Infinity;
+        bv = bv ? new Date(bv).getTime() : -Infinity;
+      } else {
+        av = (av || '').toString().toLowerCase();
+        bv = (bv || '').toString().toLowerCase();
+      }
+      if (av < bv) return -1 * dir;
+      if (av > bv) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function renderCustomerTable() {
+    if (!currentCustomers.length) {
+      searchBody.innerHTML = '';
+      searchEmpty.style.display = 'block';
+      return;
+    }
+    searchEmpty.style.display = 'none';
+    searchBody.innerHTML = sortedCustomers().map(function (c) {
+      return '<tr><td>' + escapeHtml(c.email) + '</td><td>' + escapeHtml(c.full_name) + '</td><td>' + escapeHtml(c.company_name) + '</td>' +
+        '<td>' + fmtMoney(c.total_spend) + '</td>' +
+        '<td>' + escapeHtml(subscriptionLabel(c.subscription_until)) + '</td>' +
+        '<td>' + fmtDate(c.last_login) + '</td>' +
+        '<td>' + fmtDate(c.created_at) + '</td>' +
+        '<td><button class="btn-secondary view-customer-btn" data-customer-id="' + c.id + '">View</button></td></tr>';
+    }).join('');
+    Array.prototype.forEach.call(searchBody.querySelectorAll('.view-customer-btn'), function (btn) {
+      btn.addEventListener('click', function () { loadCustomerDetail(btn.getAttribute('data-customer-id')); });
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('th.sortable'), function (th) {
+    var key = th.getAttribute('data-sort');
+    var arrow = document.createElement('span');
+    arrow.className = 'sort-arrow';
+    th.appendChild(arrow);
+    th.addEventListener('click', function () {
+      if (sortState.key === key) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState = { key: key, dir: 'asc' };
+      }
+      Array.prototype.forEach.call(document.querySelectorAll('th.sortable'), function (other) {
+        other.classList.remove('sort-active');
+        other.querySelector('.sort-arrow').textContent = '';
+      });
+      th.classList.add('sort-active');
+      arrow.textContent = sortState.dir === 'asc' ? '↑' : '↓';
+      renderCustomerTable();
+    });
+  });
 
   function runSearch() {
     var q = searchInput.value.trim();
-    if (!q) return;
     fetchJson('/api/admin/customers?q=' + encodeURIComponent(q)).then(function (res) {
       if (!res.ok) return;
-      var customers = res.data.customers || [];
-      if (!customers.length) {
-        searchBody.innerHTML = '';
-        searchEmpty.textContent = 'No customers found.';
-        searchEmpty.style.display = 'block';
-        return;
-      }
-      searchEmpty.style.display = 'none';
-      searchBody.innerHTML = customers.map(function (c) {
-        return '<tr><td>' + escapeHtml(c.email) + '</td><td>' + escapeHtml(c.full_name) + '</td><td>' + escapeHtml(c.company_name) + '</td><td>' + fmtDate(c.created_at) + '</td>' +
-          '<td><button class="btn-secondary view-customer-btn" data-customer-id="' + c.id + '">View</button></td></tr>';
-      }).join('');
-      Array.prototype.forEach.call(searchBody.querySelectorAll('.view-customer-btn'), function (btn) {
-        btn.addEventListener('click', function () { loadCustomerDetail(btn.getAttribute('data-customer-id')); });
-      });
+      currentCustomers = res.data.customers || [];
+      renderCustomerTable();
     });
   }
   document.getElementById('customer-search-btn').addEventListener('click', runSearch);
   searchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } });
+
+  function csvEscape(v) {
+    var s = (v == null ? '' : String(v));
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  document.getElementById('customer-export-btn').addEventListener('click', function () {
+    var headers = ['Email', 'Name', 'Company', 'Total Spend', 'Subscription Until', 'Last Login', 'Customer Since'];
+    var rows = sortedCustomers().map(function (c) {
+      return [c.email, c.full_name, c.company_name, (Number(c.total_spend) || 0).toFixed(2), c.subscription_until || '', c.last_login || '', c.created_at];
+    });
+    var csv = [headers].concat(rows).map(function (row) { return row.map(csvEscape).join(','); }).join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'arli-customers-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // Load the full roster as soon as the Customers tab is opened, not just on search.
+  tabCustomers.addEventListener('click', function () {
+    if (!currentCustomers.length) runSearch();
+  });
 
   document.getElementById('customer-detail-back').addEventListener('click', function (e) {
     e.preventDefault();

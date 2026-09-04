@@ -82,8 +82,20 @@ export async function onRequestPost(context) {
     const auditType = auditTypeFromVariantTitle(lineItem.variant_title || lineItem.title);
     if (!auditType) continue; // our product, but a variant title we don't recognize — skip rather than guess
     const quantity = Number(lineItem.quantity) || 1;
+    // line_item.price is the PRE-discount unit price. discount_allocations is where
+    // Shopify puts the actual amount knocked off this line — both line-item-level
+    // discounts and order-level ones (Shopify distributes those down per line item
+    // specifically so this works) — so net = gross line total minus allocations,
+    // split evenly across quantity to get what each entitlement actually cost.
+    const grossLineTotal = (Number.parseFloat(lineItem.price) || 0) * quantity;
+    const lineDiscounts = (lineItem.discount_allocations || []).reduce(
+      (sum, da) => sum + (Number.parseFloat(da.amount) || 0),
+      0
+    );
+    const netLineTotal = Math.max(0, grossLineTotal - lineDiscounts);
+    const pricePaid = Math.round((netLineTotal / quantity) * 100) / 100;
     for (let i = 0; i < quantity; i++) {
-      await createAndRedeemEntitlement({ env, customer, auditType, orderId, attrs, nowIso });
+      await createAndRedeemEntitlement({ env, customer, auditType, orderId, pricePaid, attrs, nowIso });
     }
   }
 
@@ -92,13 +104,13 @@ export async function onRequestPost(context) {
   return json({ ok: true });
 }
 
-async function createAndRedeemEntitlement({ env, customer, auditType, orderId, attrs, nowIso }) {
+async function createAndRedeemEntitlement({ env, customer, auditType, orderId, pricePaid, attrs, nowIso }) {
   const entitlementId = crypto.randomUUID();
   await env.DB.prepare(
-    `INSERT INTO entitlements (id, customer_id, audit_type, source_order_id, status, created_at)
-     VALUES (?,?,?,?,'unredeemed',?)`
+    `INSERT INTO entitlements (id, customer_id, audit_type, source_order_id, price_paid, status, created_at)
+     VALUES (?,?,?,?,?,'unredeemed',?)`
   )
-    .bind(entitlementId, customer.id, auditType, orderId, nowIso)
+    .bind(entitlementId, customer.id, auditType, orderId, pricePaid, nowIso)
     .run();
 
   // Homepage path: a Submission ID attribute points at a pending `submissions` row
