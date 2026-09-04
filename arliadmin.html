@@ -45,6 +45,7 @@
   .btn-primary, .btn-secondary { border: none; padding: 7px 12px; border-radius: 6px; font-weight: 600; font-size: 12.5px; cursor: pointer; }
   .btn-primary { background: var(--accent); color: #fff; }
   .btn-secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  a.btn-secondary, a.btn-primary { display: inline-block; text-decoration: none; }
   input[type=text], input[type=email], input[type=date], select, textarea {
     padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; font-size: 13.5px; font-family: inherit; width: 100%;
   }
@@ -98,6 +99,10 @@
       <div class="card">
         <h2>Fulfillment queue</h2>
         <p class="sub">Every report, most recent first.</p>
+        <div class="search-row">
+          <input type="text" id="queue-search-input" placeholder="Customer, email, or ASIN">
+          <button class="btn-secondary" id="queue-export-btn">Export CSV</button>
+        </div>
         <table>
           <thead><tr><th>Customer</th><th>ASIN</th><th>Audit</th><th>Status</th><th>Intake</th><th>Created</th><th></th></tr></thead>
           <tbody id="queue-body"></tbody>
@@ -317,32 +322,37 @@
       });
   });
 
-  function renderQueue(data) {
-    var unredeemedCard = document.getElementById('unredeemed-card');
-    var unredeemedBody = document.getElementById('unredeemed-body');
-    if (data.unredeemed_entitlements && data.unredeemed_entitlements.length) {
-      unredeemedCard.style.display = 'block';
-      unredeemedBody.innerHTML = data.unredeemed_entitlements.map(function (e) {
-        return '<tr><td>' + escapeHtml(e.full_name || e.email) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(e.email) + '</span></td>' +
-          '<td>' + escapeHtml(AUDIT_LABEL[e.audit_type] || e.audit_type) + '</td>' +
-          '<td>' + fmtDate(e.created_at) + '</td></tr>';
-      }).join('');
-    } else {
-      unredeemedCard.style.display = 'none';
-    }
+  // Fulfillment queue — search/export operate client-side on the last-fetched
+  // array, same pattern as the Customers tab (see currentCustomers below).
+  var currentQueueReports = [];
+  var queueSearchInput = document.getElementById('queue-search-input');
 
+  function filteredQueueReports() {
+    var q = queueSearchInput.value.trim().toLowerCase();
+    if (!q) return currentQueueReports;
+    return currentQueueReports.filter(function (r) {
+      var name = (r.full_name || '').toLowerCase();
+      var email = (r.email || '').toLowerCase();
+      var asin = (r.asin || '').toLowerCase();
+      return name.indexOf(q) !== -1 || email.indexOf(q) !== -1 || asin.indexOf(q) !== -1;
+    });
+  }
+
+  function renderQueueTable() {
     var queueBody = document.getElementById('queue-body');
     var queueEmpty = document.getElementById('queue-empty');
-    if (!data.reports || !data.reports.length) {
+    var rows = filteredQueueReports();
+    if (!rows.length) {
       queueBody.innerHTML = '';
+      queueEmpty.textContent = currentQueueReports.length ? 'No matching reports.' : 'Nothing in the queue yet.';
       queueEmpty.style.display = 'block';
     } else {
       queueEmpty.style.display = 'none';
-      queueBody.innerHTML = data.reports.map(function (r) {
+      queueBody.innerHTML = rows.map(function (r) {
         var intake = (r.str_provided ? 'STR ✓' : (r.audit_type === 'listing' ? '' : 'STR ✗')) +
           (r.biz_report_provided ? ' · Biz ✓' : '');
         var action = r.status === 'delivered'
-          ? ''
+          ? '<a class="btn-secondary view-report-link" href="/api/admin/reports/' + encodeURIComponent(r.report_id) + '/download" target="_blank" rel="noopener">View report</a>'
           : '<button class="btn-primary deliver-btn" data-report-id="' + r.report_id + '">Deliver</button>';
         return '<tr>' +
           '<td>' + escapeHtml(r.full_name || r.email) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(r.email) + '</span></td>' +
@@ -363,6 +373,43 @@
         });
       });
     }
+  }
+  queueSearchInput.addEventListener('input', renderQueueTable);
+  document.getElementById('queue-export-btn').addEventListener('click', function () {
+    var headers = ['Customer', 'Email', 'ASIN', 'Marketplace', 'Audit Type', 'Status', 'STR Provided', 'Biz Report Provided', 'Created', 'Delivered'];
+    var rows = filteredQueueReports().map(function (r) {
+      return [r.full_name || '', r.email, r.asin, r.marketplace, AUDIT_LABEL[r.audit_type] || r.audit_type,
+        STATUS_LABEL[r.status] || r.status, r.str_provided ? 'Yes' : 'No', r.biz_report_provided ? 'Yes' : 'No',
+        r.created_at, r.delivered_at || ''];
+    });
+    var csv = [headers].concat(rows).map(function (row) { return row.map(csvEscape).join(','); }).join('\r\n');
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'arli-queue-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  function renderQueue(data) {
+    var unredeemedCard = document.getElementById('unredeemed-card');
+    var unredeemedBody = document.getElementById('unredeemed-body');
+    if (data.unredeemed_entitlements && data.unredeemed_entitlements.length) {
+      unredeemedCard.style.display = 'block';
+      unredeemedBody.innerHTML = data.unredeemed_entitlements.map(function (e) {
+        return '<tr><td>' + escapeHtml(e.full_name || e.email) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(e.email) + '</span></td>' +
+          '<td>' + escapeHtml(AUDIT_LABEL[e.audit_type] || e.audit_type) + '</td>' +
+          '<td>' + fmtDate(e.created_at) + '</td></tr>';
+      }).join('');
+    } else {
+      unredeemedCard.style.display = 'none';
+    }
+
+    currentQueueReports = data.reports || [];
+    renderQueueTable();
 
     var freeScanBody = document.getElementById('free-scan-body');
     freeScanBody.innerHTML = (data.recent_free_scans || []).map(function (f) {
