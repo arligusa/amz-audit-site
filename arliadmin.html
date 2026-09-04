@@ -101,6 +101,7 @@
         <p class="sub">Every report, most recent first.</p>
         <div class="search-row">
           <input type="text" id="queue-search-input" placeholder="Customer, email, or ASIN">
+          <button class="btn-primary" id="queue-search-btn">Search</button>
           <button class="btn-secondary" id="queue-export-btn">Export CSV</button>
         </div>
         <table>
@@ -374,7 +375,8 @@
       });
     }
   }
-  queueSearchInput.addEventListener('input', renderQueueTable);
+  document.getElementById('queue-search-btn').addEventListener('click', renderQueueTable);
+  queueSearchInput.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); renderQueueTable(); } });
   document.getElementById('queue-export-btn').addEventListener('click', function () {
     var headers = ['Customer', 'Email', 'ASIN', 'Marketplace', 'Audit Type', 'Status', 'STR Provided', 'Biz Report Provided', 'Created', 'Delivered'];
     var rows = filteredQueueReports().map(function (r) {
