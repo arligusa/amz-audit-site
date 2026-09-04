@@ -227,6 +227,24 @@ export async function sendMagicLinkEmail(env, email, verifyUrl) {
   await sendPlainEmail(env, email, subject, text, `magic link (${verifyUrl})`);
 }
 
+// Mints a fresh magic link and emails it with custom subject/intro copy — shared by
+// the order-paid webhook (purchase confirmation) and the admin "add customer" flow
+// (welcome email), both of which need a real login link, not just a generic one.
+export async function sendLoginLinkEmail(env, request, email, { subject, intro }) {
+  const token = newToken();
+  const tokenHash = await hashToken(token);
+  const now = new Date();
+  await env.DB.prepare('INSERT INTO magic_links (token, customer_email, created_at, expires_at, used_at) VALUES (?,?,?,?,NULL)')
+    .bind(tokenHash, email, now.toISOString(), magicLinkExpiry(now))
+    .run();
+
+  const verifyUrl = new URL('/api/auth/verify', request.url);
+  verifyUrl.searchParams.set('token', token);
+
+  const text = `${intro}\n\nClick below to log in. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl.toString()}\n\nQuestions? Reply to this email or reach us at contact@arli.arligusa.com.`;
+  await sendPlainEmail(env, email, subject, text, `login link (${verifyUrl.toString()})`);
+}
+
 // Verifies a Shopify webhook delivery: HMAC-SHA256 over the RAW request body,
 // base64-encoded, compared against the X-Shopify-Hmac-Sha256 header. Must run on the
 // untouched body text — parsing/re-serializing JSON first would change the byte

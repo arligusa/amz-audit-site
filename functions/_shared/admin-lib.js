@@ -144,3 +144,39 @@ export async function logAdminAction(env, { adminEmail, action, targetType, targ
     .bind(crypto.randomUUID(), adminEmail, action, targetType, targetId, reason || null, new Date().toISOString())
     .run();
 }
+
+// Shared by the "comp an audit" and "add customer" admin actions — both need to
+// resolve an email (or an existing customer_id) down to a real customer row,
+// creating one if it doesn't exist yet. Same find-or-create pattern used by the
+// order-paid webhook and the public login flow, just admin-triggered.
+export async function findOrCreateCustomer(env, { customerId, email }) {
+  if (customerId) {
+    const existing = await env.DB.prepare('SELECT id, email FROM customers WHERE id = ?').bind(customerId).first();
+    return existing || null;
+  }
+  const now = new Date().toISOString();
+  let customer = await env.DB.prepare('SELECT id, email FROM customers WHERE email = ?').bind(email).first();
+  if (!customer) {
+    const id = crypto.randomUUID();
+    await env.DB.prepare('INSERT INTO customers (id, email, created_at, updated_at) VALUES (?,?,?,?)')
+      .bind(id, email, now, now)
+      .run();
+    customer = { id, email };
+  }
+  return customer;
+}
+
+// Grants a complimentary entitlement — the `comp:` sentinel in source_order_id (in
+// place of a real Shopify order id) is what keeps comps distinguishable from paid
+// orders everywhere else this table gets read (customer total-spend stays
+// accurate since price_paid defaults to 0 for these).
+export async function grantComplimentaryEntitlement(env, { customerId, auditType, adminEmail }) {
+  const entitlementId = crypto.randomUUID();
+  await env.DB.prepare(
+    `INSERT INTO entitlements (id, customer_id, audit_type, source_order_id, price_paid, status, created_at)
+     VALUES (?,?,?,?,0,'unredeemed',?)`
+  )
+    .bind(entitlementId, customerId, auditType, `comp:${adminEmail}`, new Date().toISOString())
+    .run();
+  return entitlementId;
+}

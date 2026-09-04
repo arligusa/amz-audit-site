@@ -54,6 +54,12 @@
   .empty, .loading { color: var(--ink-soft); font-size: 13.5px; padding: 14px 0; }
   .err { color: #b42318; font-size: 13px; margin-top: 8px; display: none; }
   .err.show { display: block; }
+  .ok { color: var(--accent); font-size: 13px; margin-top: 8px; display: none; }
+  .ok.show { display: block; }
+  .add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; margin-bottom: 4px; }
+  .add-row input[type=email] { flex: 2; min-width: 220px; }
+  .add-row select { flex: 1; min-width: 170px; }
+  .add-row input[type=text] { flex: 2; min-width: 200px; }
   .badge-comp { font-size: 11px; color: var(--warn); }
   a.back-link { font-size: 13px; color: var(--accent); text-decoration: none; }
   dialog { border: none; border-radius: 12px; padding: 0; max-width: 420px; width: calc(100% - 40px); }
@@ -132,6 +138,26 @@
           <tbody id="customer-search-body"></tbody>
         </table>
         <div id="customer-search-empty" class="empty" style="display:none;">No customers found.</div>
+      </div>
+
+      <div class="card">
+        <h2>Add customer</h2>
+        <p class="sub" style="margin-bottom:10px;">Creates the account (if it doesn't exist yet) and emails a login link. Optionally give away a product at the same time.</p>
+        <form id="add-customer-form">
+          <div class="add-row">
+            <input type="email" id="add-customer-email" placeholder="Customer email" required>
+            <select id="add-customer-audit-type">
+              <option value="">No product — account only</option>
+              <option value="listing">Listing Audit</option>
+              <option value="ppc">PPC Audit</option>
+              <option value="both">Both (Listing + PPC)</option>
+            </select>
+            <input type="text" id="add-customer-reason" placeholder="Reason (required if granting a product)">
+            <button type="submit" class="btn-primary">Add customer</button>
+          </div>
+          <div id="add-customer-err" class="err"></div>
+          <div id="add-customer-ok" class="ok"></div>
+        </form>
       </div>
 
       <div id="customer-detail" class="card" style="display:none;">
@@ -409,10 +435,14 @@
         '<td>' + escapeHtml(subscriptionLabel(c.subscription_until)) + '</td>' +
         '<td>' + fmtDate(c.last_login) + '</td>' +
         '<td>' + fmtDate(c.created_at) + '</td>' +
-        '<td><button class="btn-secondary view-customer-btn" data-customer-id="' + c.id + '">View</button></td></tr>';
+        '<td><button class="btn-secondary view-customer-btn" data-customer-id="' + c.id + '">View</button> ' +
+        '<button class="btn-secondary grant-row-btn" data-customer-id="' + c.id + '">Grant</button></td></tr>';
     }).join('');
     Array.prototype.forEach.call(searchBody.querySelectorAll('.view-customer-btn'), function (btn) {
       btn.addEventListener('click', function () { loadCustomerDetail(btn.getAttribute('data-customer-id')); });
+    });
+    Array.prototype.forEach.call(searchBody.querySelectorAll('.grant-row-btn'), function (btn) {
+      btn.addEventListener('click', function () { openGrantDialog(btn.getAttribute('data-customer-id')); });
     });
   }
 
@@ -474,6 +504,36 @@
     if (!currentCustomers.length) runSearch();
   });
 
+  // Manually add a customer — no Shopify order. Always emails a login link;
+  // optionally comps a product at the same time (e.g. giving away an audit).
+  var addCustomerForm = document.getElementById('add-customer-form');
+  var addCustomerErr = document.getElementById('add-customer-err');
+  var addCustomerOk = document.getElementById('add-customer-ok');
+  addCustomerForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    addCustomerErr.classList.remove('show');
+    addCustomerOk.classList.remove('show');
+    fetchJson('/api/admin/customers/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: document.getElementById('add-customer-email').value.trim(),
+        audit_type: document.getElementById('add-customer-audit-type').value,
+        reason: document.getElementById('add-customer-reason').value.trim(),
+      }),
+    }).then(function (res) {
+      if (!res.ok) {
+        addCustomerErr.textContent = (res.data && res.data.error) || 'Something went wrong.';
+        addCustomerErr.classList.add('show');
+        return;
+      }
+      addCustomerForm.reset();
+      addCustomerOk.textContent = 'Customer added — a login link has been emailed to them.';
+      addCustomerOk.classList.add('show');
+      runSearch();
+    });
+  });
+
   document.getElementById('customer-detail-back').addEventListener('click', function (e) {
     e.preventDefault();
     detailEl.style.display = 'none';
@@ -526,15 +586,18 @@
     });
   }
 
-  // Comp an audit
+  // Comp an audit — opened either from inside a customer's detail view, or as a
+  // quick action straight from a table row (activeCustomerId is set either way).
   var grantDialog = document.getElementById('grant-dialog');
   var grantForm = document.getElementById('grant-form');
   var grantErr = document.getElementById('grant-err');
-  document.getElementById('grant-btn').addEventListener('click', function () {
+  function openGrantDialog(customerId) {
+    activeCustomerId = customerId;
     grantErr.classList.remove('show');
     grantForm.reset();
     grantDialog.showModal();
-  });
+  }
+  document.getElementById('grant-btn').addEventListener('click', function () { openGrantDialog(activeCustomerId); });
   document.getElementById('grant-cancel').addEventListener('click', function () { grantDialog.close(); });
   grantForm.addEventListener('submit', function (e) {
     e.preventDefault();

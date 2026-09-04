@@ -5,7 +5,7 @@
 // at all. See /Users/kendall/.claude/plans/effervescent-beaming-fox.md for the
 // full design.
 import { json, auditTypeFromVariantTitle, SHOPIFY_ATTR, SHOPIFY_PRODUCT_ID } from '../../_shared/prescan-lib.js';
-import { verifyShopifyWebhookHmac, sendPlainEmail, newToken, hashToken, magicLinkExpiry } from '../../_shared/auth-lib.js';
+import { verifyShopifyWebhookHmac, sendLoginLinkEmail } from '../../_shared/auth-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -213,21 +213,8 @@ async function redeemEntitlement({ env, entitlementId, reportId, nowIso }) {
 }
 
 async function sendPurchaseConfirmationEmail({ env, request, customer, isNewCustomer }) {
-  const token = newToken();
-  const tokenHash = await hashToken(token);
-  const now = new Date();
-  await env.DB.prepare('INSERT INTO magic_links (token, customer_email, created_at, expires_at, used_at) VALUES (?,?,?,?,NULL)')
-    .bind(tokenHash, customer.email, now.toISOString(), magicLinkExpiry(now))
-    .run();
-
-  const verifyUrl = new URL('/api/auth/verify', request.url);
-  verifyUrl.searchParams.set('token', token);
-
-  const subject = 'Your Arli Audits order is confirmed';
   const intro = isNewCustomer
     ? "Thanks for your order — let's get your account set up."
     : 'Thanks for your order — log in to see it in your portal.';
-  const text = `${intro}\n\nClick below to log in. This link expires in 15 minutes and can only be used once.\n\n${verifyUrl.toString()}\n\nQuestions? Reply to this email or reach us at contact@arli.arligusa.com.`;
-
-  await sendPlainEmail(env, customer.email, subject, text, `purchase confirmation (${verifyUrl.toString()})`);
+  await sendLoginLinkEmail(env, request, customer.email, { subject: 'Your Arli Audits order is confirmed', intro });
 }
