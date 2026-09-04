@@ -6,7 +6,7 @@ import { requireAdmin, adminUnauthorized } from '../../_shared/admin-lib.js';
 // (search by email) and "what happened to order #1234" (search by order id) alike.
 export async function onRequestGet(context) {
   const { request, env } = context;
-  if (!requireAdmin(request)) return adminUnauthorized();
+  if (!(await requireAdmin(request, env))) return adminUnauthorized();
 
   const url = new URL(request.url);
   const q = (url.searchParams.get('q') || '').trim();

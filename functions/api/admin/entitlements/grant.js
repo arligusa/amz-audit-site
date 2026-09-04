@@ -3,11 +3,12 @@
 // entitlement, just like a paid one, but with a `comp:` sentinel in place of a
 // real Shopify order id so comps stay distinguishable from paid orders in reporting.
 import { json, isValidEmail } from '../../../_shared/prescan-lib.js';
-import { requireAdmin, adminUnauthorized, adminEmail, logAdminAction } from '../../../_shared/admin-lib.js';
+import { requireAdmin, adminUnauthorized, logAdminAction } from '../../../_shared/admin-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  if (!requireAdmin(request)) return adminUnauthorized();
+  const adminEmail = await requireAdmin(request, env);
+  if (!adminEmail) return adminUnauthorized();
 
   let body;
   try {
@@ -52,11 +53,11 @@ export async function onRequestPost(context) {
     `INSERT INTO entitlements (id, customer_id, audit_type, source_order_id, status, created_at)
      VALUES (?,?,?,?,'unredeemed',?)`
   )
-    .bind(entitlementId, customerId, auditType, `comp:${adminEmail(request)}`, now)
+    .bind(entitlementId, customerId, auditType, `comp:${adminEmail}`, now)
     .run();
 
   await logAdminAction(env, {
-    adminEmail: adminEmail(request),
+    adminEmail,
     action: 'grant_entitlement',
     targetType: 'entitlement',
     targetId: entitlementId,

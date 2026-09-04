@@ -3,11 +3,12 @@
 // asins.subscription_until, the field a real subscription feature will also use,
 // so this action doesn't need to change shape once that's built.
 import { json } from '../../../_shared/prescan-lib.js';
-import { requireAdmin, adminUnauthorized, adminEmail, logAdminAction } from '../../../_shared/admin-lib.js';
+import { requireAdmin, adminUnauthorized, logAdminAction } from '../../../_shared/admin-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
-  if (!requireAdmin(request)) return adminUnauthorized();
+  const adminEmail = await requireAdmin(request, env);
+  if (!adminEmail) return adminUnauthorized();
 
   let body;
   try {
@@ -37,7 +38,7 @@ export async function onRequestPost(context) {
     .run();
 
   await logAdminAction(env, {
-    adminEmail: adminEmail(request),
+    adminEmail,
     action: 'extend_subscription',
     targetType: 'asin',
     targetId: asinId,

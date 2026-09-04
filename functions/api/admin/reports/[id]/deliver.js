@@ -2,11 +2,12 @@
 // Before this endpoint existed, there was no mechanism anywhere in the system to
 // actually mark a report delivered; it had to happen entirely out of band.
 import { json } from '../../../../_shared/prescan-lib.js';
-import { requireAdmin, adminUnauthorized, adminEmail, logAdminAction } from '../../../../_shared/admin-lib.js';
+import { requireAdmin, adminUnauthorized, logAdminAction } from '../../../../_shared/admin-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env, params } = context;
-  if (!requireAdmin(request)) return adminUnauthorized();
+  const adminEmail = await requireAdmin(request, env);
+  if (!adminEmail) return adminUnauthorized();
 
   const report = await env.DB.prepare('SELECT * FROM reports WHERE id = ?').bind(params.id).first();
   if (!report) return json({ error: 'Report not found.' }, 404);
@@ -35,7 +36,7 @@ export async function onRequestPost(context) {
     .run();
 
   await logAdminAction(env, {
-    adminEmail: adminEmail(request),
+    adminEmail,
     action: 'deliver_report',
     targetType: 'report',
     targetId: report.id,

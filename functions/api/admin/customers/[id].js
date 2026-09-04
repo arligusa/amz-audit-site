@@ -5,7 +5,7 @@ import { requireAdmin, adminUnauthorized } from '../../../_shared/admin-lib.js';
 // conversation ("customer says they never got their report").
 export async function onRequestGet(context) {
   const { request, env, params } = context;
-  if (!requireAdmin(request)) return adminUnauthorized();
+  if (!(await requireAdmin(request, env))) return adminUnauthorized();
 
   const customer = await env.DB.prepare('SELECT * FROM customers WHERE id = ?').bind(params.id).first();
   if (!customer) return json({ error: 'Customer not found.' }, 404);

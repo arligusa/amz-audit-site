@@ -3,7 +3,7 @@ import { requireAdmin, adminUnauthorized } from '../../_shared/admin-lib.js';
 
 export async function onRequestGet(context) {
   const { request, env } = context;
-  if (!requireAdmin(request)) return adminUnauthorized();
+  if (!(await requireAdmin(request, env))) return adminUnauthorized();
 
   const { results: reports } = await env.DB.prepare(
     `SELECT r.id as report_id, r.audit_type, r.status, r.str_provided, r.biz_report_provided,
