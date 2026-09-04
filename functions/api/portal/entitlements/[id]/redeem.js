@@ -101,10 +101,10 @@ export async function onRequestPost(context) {
   await env.DB.prepare(
     `INSERT INTO reports
       (id, asin_id, customer_id, audit_type, status, str_provided, str_note, notes,
-       backend_terms, biz_report_provided, str_report_r2_key, biz_report_r2_key, created_at, updated_at)
-     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?,?,?,?,?)`
+       backend_terms, biz_report_provided, str_report_r2_key, biz_report_r2_key, order_id, created_at, updated_at)
+     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?,?,?,?,?,?)`
   )
-    .bind(reportId, asinId, auth.customer.id, entitlement.audit_type, strReportKey ? 1 : 0, strNote, notes, backendTerms, bizReportKey ? 1 : 0, strReportKey, bizReportKey, now, now)
+    .bind(reportId, asinId, auth.customer.id, entitlement.audit_type, strReportKey ? 1 : 0, strNote, notes, backendTerms, bizReportKey ? 1 : 0, strReportKey, bizReportKey, entitlement.source_order_id, now, now)
     .run();
 
   await env.DB.prepare("UPDATE entitlements SET status = 'redeemed', report_id = ?, redeemed_at = ? WHERE id = ?")

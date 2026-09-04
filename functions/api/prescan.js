@@ -1,5 +1,6 @@
 import { json, isValidEmail, extractAsin, runPrescan } from '../_shared/prescan-lib.js';
 import { validateUpload, uploadKey } from '../_shared/upload-lib.js';
+import { sendPlainEmail } from '../_shared/auth-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env } = context;
@@ -122,5 +123,25 @@ export async function onRequestPost(context) {
     return json({ error: 'Something went wrong saving your details. Please try again in a moment.' }, 500);
   }
 
+  await sendEditLinkEmail({ env, request, email, id, editToken });
+
   return json({ id, edit_token: editToken, asin, prescan });
+}
+
+// Same edit-link shape as the Shopify checkout note built in index.html
+// (`{origin}/edit.html?id=...&token=...`) — this is the customer-facing copy of
+// that link; the checkout note stays as a secondary/staff-facing copy of it.
+async function sendEditLinkEmail({ env, request, email, id, editToken }) {
+  const editUrl = new URL('/edit.html', request.url);
+  editUrl.searchParams.set('id', id);
+  editUrl.searchParams.set('token', editToken);
+
+  const subject = 'Edit your Arli Audits submission';
+  const text =
+    `We've saved your Arli Audits submission. If you spot a mistake — wrong ASIN, wrong audit type, or the wrong file uploaded — you can fix it yourself before your audit starts, no need to email us:\n\n` +
+    `${editUrl.toString()}\n\n` +
+    `This link doesn't expire, but it only changes what you submitted — once you complete your purchase, the details on file at that moment are what we audit, so make any corrections before then.\n\n` +
+    `Questions? Reply to this email or reach us at contact@arli.arligusa.com.`;
+
+  await sendPlainEmail(env, email, subject, text, `submission edit link (${editUrl.toString()})`);
 }

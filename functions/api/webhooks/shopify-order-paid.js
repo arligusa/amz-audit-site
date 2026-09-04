@@ -95,16 +95,25 @@ export async function onRequestPost(context) {
     const netLineTotal = Math.max(0, grossLineTotal - lineDiscounts);
     const pricePaid = Math.round((netLineTotal / quantity) * 100) / 100;
     for (let i = 0; i < quantity; i++) {
-      await createAndRedeemEntitlement({ env, customer, auditType, orderId, pricePaid, attrs, nowIso });
+      await createAndRedeemEntitlement({ env, customer, auditType, orderId, orderName: order.name || null, pricePaid, attrs, nowIso });
     }
   }
 
-  await sendPurchaseConfirmationEmail({ env, request, customer, isNewCustomer });
+  // The customer/entitlement/report are already fully created above, and the order
+  // is now marked processed (processed_shopify_orders) — a throw here would 500 this
+  // webhook, Shopify would retry, and the retry would short-circuit on the idempotency
+  // guard without ever attempting the email again, permanently. Don't let it take the
+  // whole webhook down.
+  try {
+    await sendPurchaseConfirmationEmail({ env, request, customer, isNewCustomer });
+  } catch (e) {
+    console.log(`[shopify-order-paid] confirmation email failed for ${customer.email}: ${e}`);
+  }
 
   return json({ ok: true });
 }
 
-async function createAndRedeemEntitlement({ env, customer, auditType, orderId, pricePaid, attrs, nowIso }) {
+async function createAndRedeemEntitlement({ env, customer, auditType, orderId, orderName, pricePaid, attrs, nowIso }) {
   const entitlementId = crypto.randomUUID();
   await env.DB.prepare(
     `INSERT INTO entitlements (id, customer_id, audit_type, source_order_id, price_paid, status, created_at)
@@ -133,10 +142,13 @@ async function createAndRedeemEntitlement({ env, customer, auditType, orderId, p
         bizReportProvided: !!submission.biz_report_r2_key,
         bizReportKey: submission.biz_report_r2_key || null,
         nowIso,
+        orderId,
       });
       await redeemEntitlement({ env, entitlementId, reportId, nowIso });
-      await env.DB.prepare("UPDATE submissions SET fulfillment_status = 'purchased', updated_at = ? WHERE id = ?")
-        .bind(nowIso, submission.id)
+      await env.DB.prepare(
+        "UPDATE submissions SET fulfillment_status = 'purchased', order_id = ?, order_name = ?, purchased_at = ?, updated_at = ? WHERE id = ?"
+      )
+        .bind(orderId, orderName, nowIso, nowIso, submission.id)
         .run();
       return;
     }
@@ -166,6 +178,7 @@ async function createAndRedeemEntitlement({ env, customer, auditType, orderId, p
         bizReportProvided: !!bizReportKey,
         bizReportKey,
         nowIso,
+        orderId,
       });
       await redeemEntitlement({ env, entitlementId, reportId, nowIso });
       return;
@@ -193,15 +206,15 @@ async function findOrCreateAsin({ env, customerId, asin, marketplace, nowIso }) 
   return id;
 }
 
-async function createReport({ env, customerId, asinId, auditType, strProvided, strNote, notes, backendTerms, strReportKey, bizReportProvided, bizReportKey, nowIso }) {
+async function createReport({ env, customerId, asinId, auditType, strProvided, strNote, notes, backendTerms, strReportKey, bizReportProvided, bizReportKey, nowIso, orderId }) {
   const id = crypto.randomUUID();
   await env.DB.prepare(
     `INSERT INTO reports
       (id, asin_id, customer_id, audit_type, status, str_provided, str_note, notes,
-       backend_terms, biz_report_provided, str_report_r2_key, biz_report_r2_key, created_at, updated_at)
-     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?,?,?,?,?)`
+       backend_terms, biz_report_provided, str_report_r2_key, biz_report_r2_key, order_id, created_at, updated_at)
+     VALUES (?,?,?,?,'awaiting_intake',?,?,?,?,?,?,?,?,?,?)`
   )
-    .bind(id, asinId, customerId, auditType, strProvided ? 1 : 0, strNote, notes, backendTerms, bizReportProvided ? 1 : 0, strReportKey, bizReportKey, nowIso, nowIso)
+    .bind(id, asinId, customerId, auditType, strProvided ? 1 : 0, strNote, notes, backendTerms, bizReportProvided ? 1 : 0, strReportKey, bizReportKey, orderId, nowIso, nowIso)
     .run();
   return id;
 }

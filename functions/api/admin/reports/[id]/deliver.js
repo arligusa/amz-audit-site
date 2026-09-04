@@ -3,6 +3,7 @@
 // actually mark a report delivered; it had to happen entirely out of band.
 import { json } from '../../../../_shared/prescan-lib.js';
 import { requireAdmin, adminUnauthorized, logAdminAction } from '../../../../_shared/admin-lib.js';
+import { sendLoginLinkEmail } from '../../../../_shared/auth-lib.js';
 
 export async function onRequestPost(context) {
   const { request, env, params } = context;
@@ -42,6 +43,21 @@ export async function onRequestPost(context) {
     targetId: report.id,
     reason: null,
   });
+
+  // The delivery itself (file + status + audit log) is already committed above — an
+  // email hiccup here shouldn't turn an already-successful delivery into an error
+  // response, which could prompt an admin to redundantly retry the upload.
+  const customer = await env.DB.prepare('SELECT * FROM customers WHERE id = ?').bind(report.customer_id).first();
+  if (customer) {
+    try {
+      await sendLoginLinkEmail(env, request, customer.email, {
+        subject: 'Your Arli Audits report is ready',
+        intro: 'Your audit is complete and ready to view — log in to your portal below to see it.',
+      });
+    } catch (e) {
+      console.log(`[deliver] failed to email ${customer.email} for report ${report.id}: ${e}`);
+    }
+  }
 
   return json({ ok: true });
 }

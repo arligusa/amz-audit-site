@@ -55,10 +55,18 @@ export async function onRequestPost(context) {
     reason: reason || null,
   });
 
-  await sendLoginLinkEmail(env, request, customer.email, {
-    subject: 'You have an Arli Audits account',
-    intro: "We've set up an Arli Audits account for you — log in below to finish your profile.",
-  });
+  // The customer (and any entitlement grant) is already committed above — don't let
+  // an email hiccup surface as a failure here, since a retry on an apparent error
+  // would re-run this whole handler and grant a second entitlement for the same
+  // customer (findOrCreateCustomer is idempotent, this isn't).
+  try {
+    await sendLoginLinkEmail(env, request, customer.email, {
+      subject: 'You have an Arli Audits account',
+      intro: "We've set up an Arli Audits account for you — log in below to finish your profile.",
+    });
+  } catch (e) {
+    console.log(`[customers/add] welcome email failed for ${customer.email}: ${e}`);
+  }
 
   return json({ ok: true, customer_id: customer.id, entitlement_id: entitlementId });
 }

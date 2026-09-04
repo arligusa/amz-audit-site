@@ -184,7 +184,7 @@
         <div class="timeline-section">
           <h3>Reports</h3>
           <table>
-            <thead><tr><th>ASIN</th><th>Audit</th><th>Status</th><th>Created</th><th>Delivered</th></tr></thead>
+            <thead><tr><th>ASIN</th><th>Audit</th><th>Status</th><th>Order</th><th>Intake</th><th>Created</th><th>Delivered</th></tr></thead>
             <tbody id="detail-reports-body"></tbody>
           </table>
         </div>
@@ -281,6 +281,30 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function shopifyOrderLink(orderId) {
+    if (!orderId) return '—';
+    if (orderId.indexOf('comp:') === 0) return '<span class="badge-comp">Comped</span>';
+    var url = 'https://arlig.myshopify.com/admin/orders/' + encodeURIComponent(orderId);
+    return '<a href="' + url + '" target="_blank" rel="noopener">' + escapeHtml(orderId) + '</a>';
+  }
+  // Links to the new admin intake-file endpoint. Rendered only when the
+  // corresponding str_provided/biz_report_provided flag is true — the endpoint
+  // itself 404s if the r2_key is somehow missing, so the boolean flag alone is
+  // enough to decide whether it's safe to show a link (no need to plumb the
+  // actual r2_key strings to the frontend just to gate this).
+  function intakeLink(reportId, kind, label) {
+    var url = '/api/admin/reports/' + encodeURIComponent(reportId) + '/upload?kind=' + kind;
+    return '<a href="' + url + '" target="_blank" rel="noopener">' + escapeHtml(label) + '</a>';
+  }
+  // Compact viewed/reminder status for a delivered report — a small sub-line under
+  // the Delivered date rather than a whole new column, per the customer-detail
+  // Reports table being the support-troubleshooting view ("did they ever see it?").
+  function viewedInfo(r) {
+    if (r.status !== 'delivered') return '';
+    var text = r.viewed_at ? 'Viewed' : 'Not yet viewed';
+    if (r.reminder_count > 0) text += ' · Reminded ' + r.reminder_count + 'x';
+    return '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(text) + '</span>';
+  }
   function fmtDate(iso) {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString() + ' ' + new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -350,8 +374,8 @@
     } else {
       queueEmpty.style.display = 'none';
       queueBody.innerHTML = rows.map(function (r) {
-        var intake = (r.str_provided ? 'STR ✓' : (r.audit_type === 'listing' ? '' : 'STR ✗')) +
-          (r.biz_report_provided ? ' · Biz ✓' : '');
+        var intake = (r.str_provided ? intakeLink(r.report_id, 'str', 'STR ✓') : (r.audit_type === 'listing' ? '' : 'STR ✗')) +
+          (r.biz_report_provided ? ' · ' + intakeLink(r.report_id, 'biz', 'Biz ✓') : '');
         var action = r.status === 'delivered'
           ? '<a class="btn-secondary view-report-link" href="/api/admin/reports/' + encodeURIComponent(r.report_id) + '/download" target="_blank" rel="noopener">View report</a>'
           : '<button class="btn-primary deliver-btn" data-report-id="' + r.report_id + '">Deliver</button>';
@@ -360,7 +384,7 @@
           '<td>' + escapeHtml(r.asin) + '<br><span style="color:var(--ink-soft);font-size:12px;">' + escapeHtml(r.marketplace) + '</span></td>' +
           '<td>' + escapeHtml(AUDIT_LABEL[r.audit_type] || r.audit_type) + '</td>' +
           '<td><span class="status-pill status-' + r.status + '">' + escapeHtml(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
-          '<td>' + escapeHtml(intake.trim()) + '</td>' +
+          '<td>' + intake.trim() + '</td>' +
           '<td>' + fmtDate(r.created_at) + '</td>' +
           '<td>' + action + '</td>' +
           '</tr>';
@@ -604,15 +628,18 @@
       }).join('') || '<tr><td colspan="4" class="empty">No ASINs yet.</td></tr>';
 
       document.getElementById('detail-reports-body').innerHTML = (d.reports || []).map(function (r) {
+        var intake = (r.str_provided ? intakeLink(r.id, 'str', 'STR ✓') : '—') + ' · ' +
+          (r.biz_report_provided ? intakeLink(r.id, 'biz', 'Biz ✓') : '—');
         return '<tr><td>' + escapeHtml(r.asin) + '</td><td>' + escapeHtml(AUDIT_LABEL[r.audit_type] || r.audit_type) + '</td>' +
           '<td><span class="status-pill status-' + r.status + '">' + escapeHtml(STATUS_LABEL[r.status] || r.status) + '</span></td>' +
-          '<td>' + fmtDate(r.created_at) + '</td><td>' + fmtDate(r.delivered_at) + '</td></tr>';
-      }).join('') || '<tr><td colspan="5" class="empty">No reports yet.</td></tr>';
+          '<td>' + shopifyOrderLink(r.order_id) + '</td>' +
+          '<td>' + intake + '</td>' +
+          '<td>' + fmtDate(r.created_at) + '</td><td>' + fmtDate(r.delivered_at) + viewedInfo(r) + '</td></tr>';
+      }).join('') || '<tr><td colspan="7" class="empty">No reports yet.</td></tr>';
 
       document.getElementById('detail-entitlements-body').innerHTML = (d.entitlements || []).map(function (e) {
-        var isComp = (e.source_order_id || '').indexOf('comp:') === 0;
         return '<tr><td>' + escapeHtml(AUDIT_LABEL[e.audit_type] || e.audit_type) + '</td>' +
-          '<td>' + (isComp ? '<span class="badge-comp">Comped</span>' : escapeHtml(e.source_order_id)) + '</td>' +
+          '<td>' + shopifyOrderLink(e.source_order_id) + '</td>' +
           '<td>' + escapeHtml(e.status) + '</td><td>' + fmtDate(e.created_at) + '</td></tr>';
       }).join('') || '<tr><td colspan="4" class="empty">None yet.</td></tr>';
 

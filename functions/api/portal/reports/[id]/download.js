@@ -18,6 +18,12 @@ export async function onRequestGet(context) {
   const object = await env.REPORTS_BUCKET.get(report.r2_key);
   if (!object) return json({ error: 'Report file is missing — please contact support.' }, 500);
 
+  // Only ever set once — first view. The WHERE clause (not a separate SELECT-then-
+  // UPDATE) makes this safe against a concurrent double-request racing this same row.
+  await env.DB.prepare('UPDATE reports SET viewed_at = ? WHERE id = ? AND viewed_at IS NULL')
+    .bind(new Date().toISOString(), report.id)
+    .run();
+
   return new Response(object.body, {
     headers: {
       'Content-Type': 'application/pdf',
