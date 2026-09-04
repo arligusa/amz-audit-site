@@ -84,7 +84,15 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: document.getElementById('l-email').value.trim() }),
     })
-      .then(function () {
+      .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+      .then(function (res) {
+        if (!res.ok) {
+          btn.disabled = false;
+          btn.textContent = 'Send me a login link';
+          errEl.textContent = (res.data && res.data.error) || 'Something went wrong — please try again.';
+          errEl.classList.add('show');
+          return;
+        }
         document.getElementById('form-view').style.display = 'none';
         document.getElementById('sent-view').style.display = 'block';
       })
